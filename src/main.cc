@@ -158,9 +158,9 @@ void usage(int code = 1)
 	fprintf(stderr, "    -e|--exec <zeek code>          | augment loaded policies by given code\n");
 	fprintf(stderr, "    -f|--filter <filter>           | tcpdump filter\n");
 	fprintf(stderr, "    -h|--help                      | command line help\n");
-	fprintf(stderr, "    -i|--iface <interface>         | read from given interface\n");
+	fprintf(stderr, "    -i|--iface <interface>         | read from given interface (only one allowed)\n");
 	fprintf(stderr, "    -p|--prefix <prefix>           | add given prefix to policy file resolution\n");
-	fprintf(stderr, "    -r|--readfile <readfile>       | read from given tcpdump file\n");
+	fprintf(stderr, "    -r|--readfile <readfile>       | read from given tcpdump file (only one allowed, pass '-' as the filename to read from stdin)\n");
 	fprintf(stderr, "    -s|--rulefile <rulefile>       | read rules from given file\n");
 	fprintf(stderr, "    -t|--tracefile <tracefile>     | activate execution tracing\n");
 	fprintf(stderr, "    -v|--version                   | print version and exit\n");
@@ -537,6 +537,8 @@ int main(int argc, char** argv)
 			break;
 
 		case 'i':
+			if ( interfaces.length() != 0 )
+				usage(1);
 			interfaces.push_back(optarg);
 			break;
 
@@ -545,6 +547,8 @@ int main(int argc, char** argv)
 			break;
 
 		case 'r':
+			if ( read_files.length() != 0 )
+				usage(1);
 			read_files.push_back(optarg);
 			break;
 
