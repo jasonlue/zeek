@@ -248,7 +248,7 @@ void PktSrc::Process()
 			net_packet_dispatch(current_packet.time, &current_packet, this);
 		}
 
-	have_packet = 0;
+	have_packet = false;
 	DoneWithPacket();
 	}
 
@@ -269,7 +269,7 @@ bool PktSrc::ExtractNextPacketInternal()
 	if ( net_is_processing_suspended() && first_timestamp )
 		{
 		SetIdle(true);
-		return 0;
+		return false;
 		}
 
 	if ( pseudo_realtime )
@@ -288,7 +288,7 @@ bool PktSrc::ExtractNextPacketInternal()
 
 		SetIdle(false);
 		have_packet = true;
-		return 1;
+		return true;
 		}
 
 	if ( pseudo_realtime && ! IsOpen() )
@@ -298,7 +298,7 @@ bool PktSrc::ExtractNextPacketInternal()
 		}
 
 	SetIdle(true);
-	return 0;
+	return true;
 	}
 
 bool PktSrc::PrecompileBPFFilter(int index, const std::string& filter)
@@ -321,7 +321,7 @@ bool PktSrc::PrecompileBPFFilter(int index, const std::string& filter)
 		Error(msg);
 
 		delete code;
-		return 0;
+		return false;
 		}
 
 	// Store it in vector.

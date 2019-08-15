@@ -49,8 +49,7 @@ IOSource* Manager::FindSoonest(double* ts)
 	{
 	// Remove sources which have gone dry. For simplicity, we only
 	// remove at most one each time.
-	for ( SourceList::iterator i = sources.begin();
-	      i != sources.end(); ++i )
+	for ( SourceList::iterator i = sources.begin(); i != sources.end(); ++i )
 		if ( ! (*i)->src->IsOpen() )
 			{
 			(*i)->src->Done();
@@ -74,17 +73,17 @@ IOSource* Manager::FindSoonest(double* ts)
 
 	// Find soonest source of those which tell us they have something to
 	// process.
-	for ( SourceList::iterator i = sources.begin(); i != sources.end(); ++i )
+	for ( auto src : sources )
 		{
-		if ( ! (*i)->src->IsIdle() )
+		if ( ! src->src->IsIdle() )
 			{
 			all_idle = false;
 			double local_network_time = 0;
-			double ts = (*i)->src->NextTimestamp(&local_network_time);
+			double ts = src->src->NextTimestamp(&local_network_time);
 			if ( ts >= 0 && ts < soonest_ts )
 				{
 				soonest_ts = ts;
-				soonest_src = (*i)->src;
+				soonest_src = src->src;
 				soonest_local_network_time =
 					local_network_time ?
 						local_network_time : ts;
@@ -92,89 +91,82 @@ IOSource* Manager::FindSoonest(double* ts)
 			}
 		}
 
-	// If we found one and aren't going to select this time,
-	// return it.
 	int maxx = 0;
 
-	if ( soonest_src && (call_count % SELECT_FREQUENCY) != 0 )
-		goto finished;
-
-	// Select on the join of all file descriptors.
-	fd_set fd_read, fd_write, fd_except;
-
-	FD_ZERO(&fd_read);
-	FD_ZERO(&fd_write);
-	FD_ZERO(&fd_except);
-
-	for ( SourceList::iterator i = sources.begin();
-	      i != sources.end(); ++i )
+	// If we found one and aren't going to select this time,
+	// return it.
+	if ( !soonest_src || (call_count % SELECT_FREQUENCY) == 0 )
 		{
-		Source* src = (*i);
+		// Select on the join of all file descriptors.
+		fd_set fd_read, fd_write, fd_except;
 
-		if ( ! src->src->IsIdle() )
-			// No need to select on sources which we know to
-			// be ready.
-			continue;
+		FD_ZERO(&fd_read);
+		FD_ZERO(&fd_write);
+		FD_ZERO(&fd_except);
 
-		src->Clear();
-		src->src->GetFds(&src->fd_read, &src->fd_write, &src->fd_except);
-		src->SetFds(&fd_read, &fd_write, &fd_except, &maxx);
-		}
-
-	// We can't block indefinitely even when all sources are dry:
-	// we're doing some IOSource-independent stuff in the main loop,
-	// so we need to return from time to time. (Instead of no time-out
-	// at all, we use a very small one. This lets FreeBSD trigger a
-	// BPF buffer switch on the next read when the hold buffer is empty
-	// while the store buffer isn't filled yet.
-
-	struct timeval timeout;
-
-	if ( all_idle )
-		{
-		// Interesting: when all sources are dry, simply sleeping a
-		// bit *without* watching for any fd becoming ready may
-		// decrease CPU load. I guess that's because it allows
-		// the kernel's packet buffers to fill. - Robin
-		timeout.tv_sec = 0;
-		timeout.tv_usec = 20; // SELECT_TIMEOUT;
-		select(0, 0, 0, 0, &timeout);
-		}
-
-	if ( ! maxx )
-		// No selectable fd at all.
-		goto finished;
-
-	timeout.tv_sec = 0;
-	timeout.tv_usec = 0;
-
-	if ( select(maxx + 1, &fd_read, &fd_write, &fd_except, &timeout) > 0 )
-		{ // Find soonest.
-		for ( SourceList::iterator i = sources.begin();
-		      i != sources.end(); ++i )
+		for ( auto src : sources )
 			{
-			Source* src = (*i);
-
 			if ( ! src->src->IsIdle() )
+				// No need to select on sources which we know to
+				// be ready.
 				continue;
 
-			if ( src->Ready(&fd_read, &fd_write, &fd_except) )
+			src->Clear();
+			src->src->GetFds(&src->fd_read, &src->fd_write, &src->fd_except);
+			src->SetFds(&fd_read, &fd_write, &fd_except, &maxx);
+			}
+
+		// We can't block indefinitely even when all sources are dry:
+		// we're doing some IOSource-independent stuff in the main loop,
+		// so we need to return from time to time. (Instead of no time-out
+		// at all, we use a very small one. This lets FreeBSD trigger a
+		// BPF buffer switch on the next read when the hold buffer is empty
+		// while the store buffer isn't filled yet.
+
+		struct timeval timeout;
+
+		if ( all_idle )
+			{
+			// Interesting: when all sources are dry, simply sleeping a
+			// bit *without* watching for any fd becoming ready may
+			// decrease CPU load. I guess that's because it allows
+			// the kernel's packet buffers to fill. - Robin
+			timeout.tv_sec = 0;
+			timeout.tv_usec = 20; // SELECT_TIMEOUT;
+			select(0, 0, 0, 0, &timeout);
+			}
+
+		if ( maxx > 0 )
+			{
+			timeout.tv_sec = 0;
+			timeout.tv_usec = 0;
+
+			if ( select(maxx + 1, &fd_read, &fd_write, &fd_except, &timeout) > 0 )
 				{
-				double local_network_time = 0;
-				double ts = src->src->NextTimestamp(&local_network_time);
-				if ( ts >= 0.0 && ts < soonest_ts )
+				// Find soonest.
+				for ( auto src : sources )
 					{
-					soonest_ts = ts;
-					soonest_src = src->src;
-					soonest_local_network_time =
-						local_network_time ?
-							local_network_time : ts;
+					if ( ! src->src->IsIdle() )
+						continue;
+
+					if ( src->Ready(&fd_read, &fd_write, &fd_except) )
+						{
+						double local_network_time = 0;
+						double ts = src->src->NextTimestamp(&local_network_time);
+						if ( ts >= 0.0 && ts < soonest_ts )
+							{
+							soonest_ts = ts;
+							soonest_src = src->src;
+							soonest_local_network_time =
+								local_network_time ?
+								local_network_time : ts;
+							}
+						}
 					}
 				}
 			}
 		}
 
-finished:
 	*ts = soonest_local_network_time;
 	return soonest_src;
 	}

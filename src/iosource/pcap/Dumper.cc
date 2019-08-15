@@ -47,7 +47,7 @@ void PcapDumper::Open()
 	if ( append )
 		{
 		// See if output file already exists (and is non-empty).
-		exists = stat(props.path.c_str(), &s); ;
+		exists = stat(props.path.c_str(), &s);
 
 		if ( exists < 0 && errno != ENOENT )
 			{
@@ -69,11 +69,10 @@ void PcapDumper::Open()
 
 	else
 		{
-		// Old file and we need to append, which, unfortunately,
-		// is not supported by libpcap. So, we have to hack a
-		// little bit, knowing that pcap_dumpter_t is, in fact,
-		// a FILE ... :-(
-		dumper = (pcap_dumper_t*) fopen(props.path.c_str(), "a");
+		// Open for appending.
+		printf("open for appending\n");
+		fflush(stdout);
+		dumper = pcap_dump_open_append(pd, props.path.c_str());
 		if ( ! dumper )
 			{
 			Error(fmt("can't open dump %s: %s", props.path.c_str(), strerror(errno)));

@@ -313,12 +313,11 @@ void net_run()
 
 		else if ( reading_live && ! pseudo_realtime)
 			{ // live but  no source is currently active
-			double ct = current_time();
 			if ( ! net_is_processing_suspended() )
 				{
 				// Take advantage of the lull to get up to
 				// date on timers and events.
-				net_update_time(ct);
+				net_update_time(current_time());
 				expire_timers();
 				usleep(1); // Just yield.
 				}
