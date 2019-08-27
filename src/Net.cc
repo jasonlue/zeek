@@ -19,6 +19,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include <uv.h>
+
 #include "NetVar.h"
 #include "Sessions.h"
 #include "Event.h"
@@ -44,9 +46,9 @@ extern int select(int, fd_set *, fd_set *, fd_set *, struct timeval *);
 
 iosource::PktDumper* pkt_dumper = 0;
 
-int reading_live = 0;
-int reading_traces = 0;
-int have_pending_timers = 0;
+bool reading_live = false;
+bool reading_traces = false;
+bool have_pending_timers = false;
 double pseudo_realtime = 0.0;
 double network_time = 0.0;	// time according to last packet timestamp
 				// (or current time)
@@ -65,6 +67,12 @@ iosource::IOSource* current_iosrc = 0;
 
 std::list<ScannedFile> files_scanned;
 std::vector<string> sig_files;
+
+// Idle handle for old IO sources. This handle will be used to call net_run()
+// during the UV loop.
+uv_idle_t old_source_idler;
+
+void net_run(uv_idle_t* handle);
 
 RETSIGTYPE watchdog(int /* signo */)
 	{
@@ -151,7 +159,7 @@ void net_init(name_list& interfaces, name_list& readfiles,
 	if ( readfiles.length() > 0 )
 		{
 		reading_live = pseudo_realtime > 0.0;
-		reading_traces = 1;
+		reading_traces = true;
 
 		for ( int i = 0; i < readfiles.length(); ++i )
 			{
@@ -167,8 +175,8 @@ void net_init(name_list& interfaces, name_list& readfiles,
 
 	else if ( interfaces.length() > 0 )
 		{
-		reading_live = 1;
-		reading_traces = 0;
+		reading_live = true;
+		reading_traces = false;
 
 		for ( int i = 0; i < interfaces.length(); ++i )
 			{
@@ -187,7 +195,7 @@ void net_init(name_list& interfaces, name_list& readfiles,
 		// that here, though, because at this point we don't know
 		// whether the user's zeek_init() event will indeed set
 		// a timer.
-		reading_traces = reading_live = 0;
+		reading_traces = reading_live = false;
 
 	if ( writefile )
 		{
@@ -215,6 +223,9 @@ void net_init(name_list& interfaces, name_list& readfiles,
 		(void) setsignal(SIGALRM, watchdog);
 		(void) alarm(watchdog_interval);
 		}
+
+	uv_idle_init(uv_default_loop(), &old_source_idler);
+	uv_idle_start(&old_source_idler, net_run);
 	}
 
 void expire_timers(iosource::PktSrc* src_ps)
@@ -281,122 +292,123 @@ void net_packet_dispatch(double t, const Packet* pkt, iosource::PktSrc* src_ps)
 	current_pktsrc = 0;
 	}
 
-void net_run()
+void net_run(uv_idle_t* handle)
 	{
 	set_processing_status("RUNNING", "net_run");
 
-	while ( iosource_mgr->Size() ||
-		(BifConst::exit_only_after_terminate && ! terminating) )
+	if ( iosource_mgr->Size() == 0 || ( !BifConst::exit_only_after_terminate && terminating ) )
 		{
-		double ts;
-		iosource::IOSource* src = iosource_mgr->FindSoonest(&ts);
+		// Get the final statistics now, and not when net_finish() is
+		// called, since that might happen quite a bit in the future
+		// due to expiring pending timers, and we don't want to ding
+		// for any packets dropped beyond this point.
+		net_get_final_stats();
+
+		uv_idle_stop(handle);
+		}
+
+	double ts;
+	iosource::IOSource* src = iosource_mgr->FindSoonest(&ts);
 
 #ifdef DEBUG
-		static int loop_counter = 0;
+	static int loop_counter = 0;
 
-		// If no source is ready, we log only every 100th cycle,
-		// starting with the first.
-		if ( src || loop_counter++ % 100 == 0 )
-			{
-			DBG_LOG(DBG_MAINLOOP, "realtime=%.6f iosrc=%s ts=%.6f",
-					current_time(), src ? src->Tag() : "<all dry>", src ? ts : -1);
-
-			if ( src )
-				loop_counter = 0;
-			}
-#endif
-		current_iosrc = src;
-		auto communication_enabled = broker_mgr->Active();
+	// If no source is ready, we log only every 100th cycle,
+	// starting with the first.
+	if ( src || loop_counter++ % 100 == 0 )
+		{
+		DBG_LOG(DBG_MAINLOOP, "realtime=%.6f iosrc=%s ts=%.6f",
+			current_time(), src ? src->Tag() : "<all dry>", src ? ts : -1);
 
 		if ( src )
-			src->Process();	// which will call net_packet_dispatch()
+			loop_counter = 0;
+		}
+#endif
+	current_iosrc = src;
+	auto communication_enabled = broker_mgr->Active();
 
-		else if ( reading_live && ! pseudo_realtime)
-			{ // live but  no source is currently active
-			if ( ! net_is_processing_suspended() )
-				{
-				// Take advantage of the lull to get up to
-				// date on timers and events.
-				net_update_time(current_time());
-				expire_timers();
-				usleep(1); // Just yield.
-				}
-			}
+	if ( src )
+		src->Process();	// which will call net_packet_dispatch()
 
-		else if ( (have_pending_timers || communication_enabled ||
-		           BifConst::exit_only_after_terminate) &&
-			  ! pseudo_realtime )
+	else if ( reading_live && ! pseudo_realtime)
+		{ // live but  no source is currently active
+		if ( ! net_is_processing_suspended() )
 			{
 			// Take advantage of the lull to get up to
-			// date on timers and events.  Because we only
-			// have timers as sources, going to sleep here
-			// doesn't risk blocking on other inputs.
+			// date on timers and events.
 			net_update_time(current_time());
 			expire_timers();
-
-			// Avoid busy-waiting - pause for 100 ms.
-			// We pick a sleep value of 100 msec that buys
-			// us a lot of idle time, but doesn't delay near-term
-			// timers too much.  (Delaying them somewhat is okay,
-			// since Bro timers are not high-precision anyway.)
-			if ( ! communication_enabled )
-				usleep(100000);
-			else
-				usleep(1000);
-
-			// Flawfinder says about usleep:
-			//
-			// This C routine is considered obsolete (as opposed
-			// to the shell command by the same name).   The
-			// interaction of this function with SIGALRM and
-			// other timer functions such as sleep(), alarm(),
-			// setitimer(), and nanosleep() is unspecified.
-			// Use nanosleep(2) or setitimer(2) instead.
-			}
-
-		mgr.Drain();
-
-		processing_start_time = 0.0;	// = "we're not processing now"
-		current_dispatched = 0;
-		current_iosrc = 0;
-
-		// Should we put the signal handling into an IOSource?
-		extern void termination_signal();
-
-		if ( signal_val == SIGTERM || signal_val == SIGINT )
-			// We received a signal while processing the
-			// current packet and its related events.
-			termination_signal();
-
-		if ( ! reading_traces )
-			// Check whether we have timers scheduled for
-			// the future on which we need to wait.
-			have_pending_timers = timer_mgr->Size() > 0;
-
-		if ( pseudo_realtime && communication_enabled )
-			{
-			auto have_active_packet_source = false;
-
-			for ( auto& ps : iosource_mgr->GetPktSrcs() )
-				{
-				if ( ps->IsOpen() )
-					{
-					have_active_packet_source = true;
-					break;
-					}
-				}
-
-			if (  ! have_active_packet_source )
-				// Can turn off pseudo realtime now
-				pseudo_realtime = 0;
+			usleep(1); // Just yield.
 			}
 		}
 
-	// Get the final statistics now, and not when net_finish() is
-	// called, since that might happen quite a bit in the future
-	// due to expiring pending timers, and we don't want to ding
-	// for any packets dropped beyond this point.
-	net_get_final_stats();
+	else if ( (have_pending_timers || communication_enabled ||
+			BifConst::exit_only_after_terminate) &&
+		! pseudo_realtime )
+		{
+		// Take advantage of the lull to get up to
+		// date on timers and events.  Because we only
+		// have timers as sources, going to sleep here
+		// doesn't risk blocking on other inputs.
+		net_update_time(current_time());
+		expire_timers();
+
+		// Avoid busy-waiting - pause for 100 ms.
+		// We pick a sleep value of 100 msec that buys
+		// us a lot of idle time, but doesn't delay near-term
+		// timers too much.  (Delaying them somewhat is okay,
+		// since Bro timers are not high-precision anyway.)
+		if ( ! communication_enabled )
+			usleep(100000);
+		else
+			usleep(1000);
+
+		// Flawfinder says about usleep:
+		//
+		// This C routine is considered obsolete (as opposed
+		// to the shell command by the same name).   The
+		// interaction of this function with SIGALRM and
+		// other timer functions such as sleep(), alarm(),
+		// setitimer(), and nanosleep() is unspecified.
+		// Use nanosleep(2) or setitimer(2) instead.
+		}
+
+	mgr.Drain();
+
+	processing_start_time = 0.0;	// = "we're not processing now"
+	current_dispatched = 0;
+	current_iosrc = 0;
+
+	// Should we put the signal handling into an IOSource?
+	extern void termination_signal();
+
+	if ( signal_val == SIGTERM || signal_val == SIGINT )
+		// We received a signal while processing the
+		// current packet and its related events.
+		termination_signal();
+
+	if ( ! reading_traces )
+		// Check whether we have timers scheduled for
+		// the future on which we need to wait.
+		have_pending_timers = timer_mgr->Size() > 0;
+
+	if ( pseudo_realtime && communication_enabled )
+		{
+		auto have_active_packet_source = false;
+
+		for ( auto& ps : iosource_mgr->GetPktSrcs() )
+			{
+			if ( ps->IsOpen() )
+				{
+				have_active_packet_source = true;
+				break;
+				}
+			}
+
+		if (  ! have_active_packet_source )
+			// Can turn off pseudo realtime now
+			pseudo_realtime = 0;
+		}
 	}
 
 void net_get_final_stats()

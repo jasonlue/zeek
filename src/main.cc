@@ -20,6 +20,8 @@ extern "C" {
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
+#include <uv.h>
+#include "3rdparty/sqlite3.h"
 
 #include "bsd-getopt-long.h"
 #include "input.h"
@@ -57,8 +59,6 @@ extern "C" {
 #include "broker/Manager.h"
 
 #include "binpac_bro.h"
-
-#include "3rdparty/sqlite3.h"
 
 Brofiler brofiler;
 
@@ -1082,7 +1082,7 @@ int main(int argc, char** argv)
 				mem_net_start_malloced / 1024 / 1024);
 			}
 
-		net_run();
+		uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
 		double time_net_done = current_time(true);;
 
