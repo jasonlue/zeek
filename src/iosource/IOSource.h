@@ -95,15 +95,15 @@ public:
 	virtual void Process() = 0;
 
 	/**
-	 * Returns the tag of the timer manafger associated with the last
-	 * procesees data item.
+	 * Returns the tag of the timer manager associated with the last
+	 * proceseed data item.
 	 *
 	 * Can be overridden by derived classes.
 	 *
 	 * @return The tag, or null for the global timer manager.
 	 * 
 	 */
-	virtual TimerMgr::Tag* GetCurrentTag()	{ return 0; }
+	virtual TimerMgr::Tag* GetCurrentTag()	{ return nullptr; }
 
 	/**
 	 * Returns a descriptual tag representing the source for debugging.

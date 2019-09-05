@@ -11,6 +11,7 @@
 #include "analyzer/Component.h"
 #include "file_analysis/Component.h"
 #include "iosource/Component.h"
+#include "uvsource/Component.h"
 #include "logging/WriterBackend.h"
 
 // Increase this when making incompatible changes to the plugin API. Note

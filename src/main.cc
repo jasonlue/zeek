@@ -57,6 +57,7 @@ extern "C" {
 #include "zeekygen/Manager.h"
 #include "iosource/Manager.h"
 #include "broker/Manager.h"
+#include "uvsource/Manager.h"
 
 #include "binpac_bro.h"
 
@@ -761,6 +762,8 @@ int main(int argc, char** argv)
 	file_mgr = new file_analysis::Manager();
 	broker_mgr = new bro_broker::Manager(read_files.length() > 0);
 
+	uvsource::Manager::Get().Init(uv_default_loop());
+
 	plugin_mgr->InitPreScript();
 	analyzer_mgr->InitPreScript();
 	file_mgr->InitPreScript();
@@ -1047,7 +1050,7 @@ int main(int argc, char** argv)
 
 	iosource_mgr->Register(thread_mgr, true);
 
-	if ( iosource_mgr->Size() > 0 ||
+	if ( uv_loop_alive(uv_default_loop()) > 0 ||
 	     have_pending_timers ||
 	     BifConst::exit_only_after_terminate )
 		{
@@ -1084,7 +1087,7 @@ int main(int argc, char** argv)
 
 		uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-		double time_net_done = current_time(true);;
+		double time_net_done = current_time(true);
 
 		uint64_t mem_net_done_total;
 		uint64_t mem_net_done_malloced;
