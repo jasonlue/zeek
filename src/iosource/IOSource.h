@@ -1,11 +1,12 @@
 // See the file "COPYING" in the main distribution directory for copyright.
 
-#ifndef IOSOURCE_IOSOURCE_H
-#define IOSOURCE_IOSOURCE_H
+#pragma once
 
 extern "C" {
 #include <pcap.h>
 }
+
+#include <uv.h>
 
 #include <string>
 #include "FD_Set.h"
@@ -19,15 +20,18 @@ namespace iosource {
  */
 class IOSource {
 public:
+	
 	/**
 	 * Constructor.
+	 *
+	 * @param loop The libuv loop to use, if creating a libuv-based iosource;
 	 */
-	IOSource()	{ idle = false; closed = false; }
+	IOSource(uv_loop_t* loop = nullptr) : loop(loop) {}
 
 	/**
 	 * Destructor.
 	 */
-	virtual ~IOSource()	{}
+	virtual ~IOSource();
 
 	/**
 	 * Returns true if source has nothing ready to process.
@@ -49,7 +53,7 @@ public:
 	 * Finalizes the source when it's being closed. Can be overwritten by
 	 * derived classes.
 	 */
-	virtual void Done()	{ }
+	virtual void Done();
 
 	/**
 	 * Returns select'able file descriptors for this source. Leaves the
@@ -61,7 +65,7 @@ public:
 	 *
 	 * @param except Pointer to container where to insert a except descriptor.
 	 */
-	virtual void GetFds(FD_Set* read, FD_Set* write, FD_Set* except) = 0;
+	virtual void GetFds(FD_Set* read, FD_Set* write, FD_Set* except) {}
 
 	/**
 	 * Returns the timestamp (in \a global network time) associated with
@@ -81,7 +85,7 @@ public:
 	 * @return The global network time of the next entry, or a value
 	 * smaller than zero if none is available currently.
 	 */
-	virtual double NextTimestamp(double* network_time) = 0;
+	virtual double NextTimestamp(double* network_time) { return 0.0; }
 
 	/**
 	 * Processes and consumes next data item.
@@ -113,8 +117,26 @@ public:
 	 * @return The debugging name.
 	 */
 	virtual const char* Tag() = 0;
+	
+	/**
+	 * Cleans up the memory used for the uv handle. Called by the callback
+	 * for uv_close() during shutdown.
+	 */
+	void Cleanup();
+
+	static IOSource* GetSource(const uv_idle_t* callback_handle);
+	static IOSource* GetSource(const uv_poll_t* callback_handle);
 
 protected:
+
+	/**
+	 * Adds a callback method to the loop, based on what type of handler. One of
+	 * these methods must be called by a child class, or the source will not be
+	 * handled during the loop.
+	 */
+	bool Start(uv_idle_cb callback);
+	bool Start(uv_poll_cb callback, int fd);
+
 	/*
 	 * Callback for derived classes to call when they have gone dry
 	 * temporarily.
@@ -130,11 +152,13 @@ protected:
 	 */
 	void SetClosed(bool is_closed)	{ closed = is_closed; }
 
+	uv_loop_t* loop = nullptr;
+
 private:
-	bool idle;
-	bool closed;
+
+	uv_handle_t* handle = nullptr;
+	bool idle = false;
+	bool closed = false;
 };
 
 }
-
-#endif

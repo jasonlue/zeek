@@ -4,7 +4,7 @@
 #include <vector>
 #include <string>
 
-#include "UVIOSource.h"
+#include "iosource/IOSource.h"
 #include "PktSrc.h"
 
 namespace uvsource {
@@ -17,7 +17,7 @@ public:
 	void Init(uv_loop_t* loop);
 	void Shutdown();
 
-	void Register(const UVIOSourcePtr& source);
+	void Register(iosource::IOSource* source);
 
 	void FlushClosed();
 
@@ -35,7 +35,7 @@ public:
 
 private:
 
-	std::vector<UVIOSourcePtr> sources;
+	std::vector<iosource::IOSource*> sources;
 	uv_check_t handle;
 
 	};

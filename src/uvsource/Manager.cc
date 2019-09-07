@@ -47,9 +47,9 @@ void Manager::FlushClosed()
 		uv_check_stop(&handle);
 	}
 
-void Manager::Register(const UVIOSourcePtr& source)
+void Manager::Register(iosource::IOSource* source)
 	{
-	source->Start();
+	source->Init();
 	sources.push_back(source);
 	}
 
@@ -110,6 +110,6 @@ PktSrc* Manager::OpenPktSrc(const std::string& path, bool is_live)
 
 	DBG_LOG(DBG_PKTIO, "Created UV packet source of type %s for %s", component->Name().c_str(), npath.c_str());
 
-	Register(UVIOSourcePtr(ps));
+	Register(ps);
 	return ps;
 	}

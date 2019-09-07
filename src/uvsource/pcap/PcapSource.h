@@ -14,7 +14,7 @@ public:
 	PcapSource(uv_loop_t* loop, const std::string& path, bool is_live);
 	~PcapSource() = default;
 
-	virtual void Start() final;
+	virtual void Init() final;
 	virtual void Stop() final;
 	void GetPacket();
 

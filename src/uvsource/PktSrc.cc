@@ -6,7 +6,7 @@
 
 using namespace uvsource;
 
-PktSrc::PktSrc(uv_loop_t* loop, const std::string& path, bool is_live) : UVIOSource(loop)
+PktSrc::PktSrc(uv_loop_t* loop, const std::string& path, bool is_live) : IOSource(loop)
 	{
 	props.path = path;
 	props.is_live = is_live;

@@ -11,13 +11,13 @@ const int bufsize = 128;
 
 void file_callback(uv_idle_t* handle)
 	{
-	PcapSource* source = reinterpret_cast<PcapSource*>(uvsource::UVIOSource::GetSource(handle));
+	PcapSource* source = reinterpret_cast<PcapSource*>(iosource::IOSource::GetSource(handle));
 	source->GetPacket();
 	}
 
 void live_callback(uv_poll_t* handle, int status, int error)
 	{
-	PcapSource* source = reinterpret_cast<PcapSource*>(uvsource::UVIOSource::GetSource(handle));
+	PcapSource* source = reinterpret_cast<PcapSource*>(iosource::IOSource::GetSource(handle));
 	source->GetPacket();
 	}
 
@@ -147,7 +147,7 @@ bool PcapSource::OpenLive()
 	props.is_live = true;
 
 	// Tell the UV bits to add this source to the loop
-	return uvsource::UVIOSource::Start(live_callback, pcap_fileno(pd));
+	return iosource::IOSource::Start(live_callback, pcap_fileno(pd));
 	}
 
 bool PcapSource::OpenFile()
@@ -171,10 +171,10 @@ bool PcapSource::OpenFile()
 	props.is_live = false;
 
 	// Tell the UV bits to add this source to the loop
-	return uvsource::UVIOSource::Start(file_callback);
+	return iosource::IOSource::Start(file_callback);
 	}
 
-void PcapSource::Start()
+void PcapSource::Init()
 	{
 	bool result = props.is_live ? OpenLive() : OpenFile();
 	
@@ -240,7 +240,7 @@ void PcapSource::Stop()
 	if ( ! pd )
 		return;
 
-	uvsource::UVIOSource::Stop();
+	iosource::IOSource::Done();
 
 	pcap_close(pd);
 	pd = nullptr;

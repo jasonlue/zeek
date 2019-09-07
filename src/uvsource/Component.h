@@ -6,11 +6,11 @@
 #include <string>
 #include <vector>
 
+#include "iosource/IOSource.h"
 #include "plugin/Component.h"
 
 namespace uvsource {
 
-class UVIOSource;
 class PktSrc;
 class PktDumper;
 
@@ -20,7 +20,7 @@ class PktDumper;
 // TODO: ZEEK_DEPRECATED("Remove in v4.1. Use uvsource's version instead.")
 class Component : public plugin::Component {
 public:
-	typedef UVIOSource* (*factory_callback)();
+	typedef iosource::IOSource* (*factory_callback)();
 
 	/**
 	 * Constructor.

@@ -3,11 +3,11 @@
 #include <string>
 
 #include "iosource/Packet.h"
-#include "UVIOSource.h"
+#include "iosource/IOSource.h"
 
 namespace uvsource {
 
-class PktSrc : public uvsource::UVIOSource
+class PktSrc : public iosource::IOSource
 	{
 public:
 	static const int NETMASK_UNKNOWN = 0xffffffff;
@@ -42,11 +42,12 @@ public:
 
 	PktSrc(uv_loop_t* loop, const std::string& path, bool is_live);
 
-	virtual ~PktSrc() = default;
 	PktSrc(const PktSrc&) = default;
 	PktSrc(PktSrc&&) = default;
 	PktSrc& operator=(const PktSrc&) = default;
 	PktSrc& operator=(PktSrc&&) = default;
+
+	virtual ~PktSrc() = default;
 
 	/**
 	 * Returns the path associated with the source. This is the interface
@@ -103,13 +104,9 @@ public:
 	// PktSrc interface for derived classes to implement.
 
 	/**
-	 * Called by the manager system to start the source.
-	 *
-	 * Derived classes must implement this method. If successful, the
-	 * implementation must call \a Opened(); if not, it must call Error()
-	 * with a corresponding message.
+	 * Called by the manager system to initialize and start the source.
 	 */
-	virtual void Start() override = 0;
+	virtual void Init() override {}
 
 protected:
 

@@ -8,7 +8,6 @@ include_directories(BEFORE
 add_subdirectory(pcap)
 
 set(uvsource_SRCS
-  UVIOSource.cc
   PktSrc.cc
   Component.cc
   Manager.cc
