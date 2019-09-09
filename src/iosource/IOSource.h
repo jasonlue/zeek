@@ -45,6 +45,11 @@ public:
 	bool IsOpen() const	{ return ! closed; }
 
 	/**
+	 * Returns true if this IOSource is libuv-based.
+	 */
+	bool IsUVBased() const { return loop != nullptr; }
+
+	/**
 	 * Initializes the source. Can be overwritten by derived classes.
 	 */
 	virtual void Init()	{ }

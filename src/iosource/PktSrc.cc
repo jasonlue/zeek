@@ -17,24 +17,14 @@
 
 using namespace iosource;
 
-PktSrc::Properties::Properties()
-	{
-	selectable_fd = -1;
-	link_type = -1;
-	netmask = NETMASK_UNKNOWN;
-	is_live = false;
-	}
-
 PktSrc::PktSrc()
 	{
-	have_packet = false;
-	errbuf = "";
 	SetClosed(true);
+	}
 
-	next_sync_point = 0;
-	first_timestamp = 0.0;
-	current_pseudo = 0.0;
-	first_wallclock = current_wallclock = 0;
+PktSrc::PktSrc(uv_loop_t* loop) : IOSource(loop)
+	{
+	SetClosed(true);
 	}
 
 PktSrc::~PktSrc()
@@ -157,7 +147,8 @@ double PktSrc::CheckPseudoTime()
 	if ( ! IsOpen() )
 		return 0;
 
-	if ( ! ExtractNextPacketInternal() )
+	if ( ( ! IsUVBased() && ! ExtractNextPacketInternal() ) ||
+		 ( IsUVBased() && ! have_packet ) )
 		return 0;
 
 	double pseudo_time = current_packet.time - first_timestamp;
@@ -231,7 +222,8 @@ void PktSrc::Process()
 	if ( ! IsOpen() )
 		return;
 
-	if ( ! ExtractNextPacketInternal() )
+	if ( ( ! IsUVBased() && ! ExtractNextPacketInternal() ) ||
+		 ( IsUVBased() && ! have_packet ) )
 		return;
 
 	if ( current_packet.Layer2Valid() )

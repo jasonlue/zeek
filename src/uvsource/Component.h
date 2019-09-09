@@ -9,10 +9,12 @@
 #include "iosource/IOSource.h"
 #include "plugin/Component.h"
 
-namespace uvsource {
+namespace iosource {
+	class PktSrc;
+	class PktDumper;
+	}
 
-class PktSrc;
-class PktDumper;
+namespace uvsource {
 
 /**
  * Component description for plugins providing UVsources.
@@ -62,7 +64,7 @@ public:
 		BOTH	///< Live input as well as offline.
 	};
 
-	typedef PktSrc* (*factory_callback)(uv_loop_t* loop, const std::string& path, bool is_live);
+	typedef iosource::PktSrc* (*factory_callback)(uv_loop_t* loop, const std::string& path, bool is_live);
 
 	/**
 	 * Constructor.
@@ -132,7 +134,7 @@ private:
 // TODO: ZEEK_DEPRECATED("Remove in v4.1. Use uvsource's version instead.")
 class PktDumperComponent : public plugin::Component  {
 public:
-	typedef PktDumper* (*factory_callback)(const std::string& path, bool append);
+	typedef iosource::PktDumper* (*factory_callback)(const std::string& path, bool append);
 
 	/**
 	 * XXX

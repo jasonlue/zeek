@@ -165,7 +165,7 @@ void net_init(name_list& interfaces, name_list& readfiles,
 
 		for ( int i = 0; i < readfiles.length(); ++i )
 			{
-			uvsource::PktSrc* ps = uvsource::Manager::Get().OpenPktSrc(readfiles[i], false);
+			iosource::PktSrc* ps = uvsource::Manager::Get().OpenPktSrc(readfiles[i], false);
 			if ( ps )
 				{
 				if ( ! ps->IsOpen() )
@@ -175,10 +175,10 @@ void net_init(name_list& interfaces, name_list& readfiles,
 			else
 				{
 				// If we didn't find a source from the UV manager, try the old one.
-				iosource::PktSrc* ps2 = iosource_mgr->OpenPktSrc(readfiles[i], false);
-				assert(ps2);
+				iosource::PktSrc* ps = iosource_mgr->OpenPktSrc(readfiles[i], false);
+				assert(ps);
 
-				if ( ! ps2->IsOpen() )
+				if ( ! ps->IsOpen() )
 					reporter->FatalError("problem with trace file %s (%s)",
 									     readfiles[i], ps->ErrorMsg());
 				}
@@ -192,7 +192,7 @@ void net_init(name_list& interfaces, name_list& readfiles,
 
 		for ( int i = 0; i < interfaces.length(); ++i )
 			{
-			uvsource::PktSrc* ps = uvsource::Manager::Get().OpenPktSrc(interfaces[i], true);
+			iosource::PktSrc* ps = uvsource::Manager::Get().OpenPktSrc(interfaces[i], true);
 			if ( ps )
 				{
 				if ( ! ps->IsOpen() )
@@ -202,10 +202,10 @@ void net_init(name_list& interfaces, name_list& readfiles,
 			else
 				{
 				// If we didn't find a source from the UV manager, try the old one.
-				iosource::PktSrc* ps2 = iosource_mgr->OpenPktSrc(interfaces[i], true);
-				assert(ps2);
+				ps = iosource_mgr->OpenPktSrc(interfaces[i], true);
+				assert(ps);
 
-				if ( ! ps2->IsOpen() )
+				if ( ! ps->IsOpen() )
 					reporter->FatalError("problem with interface %s (%s)",
 									     interfaces[i], ps->ErrorMsg());
 				}

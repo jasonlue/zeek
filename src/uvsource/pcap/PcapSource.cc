@@ -21,9 +21,11 @@ void live_callback(uv_poll_t* handle, int status, int error)
 	source->GetPacket();
 	}
 
-PcapSource::PcapSource(uv_loop_t* loop, const std::string& path, bool is_live) :
-	PktSrc(loop, path, is_live)
+PcapSource::PcapSource(uv_loop_t* loop, const std::string& path, bool is_live) : PktSrc(loop)
 	{
+	props.path = path;
+	props.is_live = is_live;
+
 	memset(&current_hdr, 0, sizeof(current_hdr));
 	memset(&last_hdr, 0, sizeof(last_hdr));
 	}
@@ -150,7 +152,7 @@ bool PcapSource::OpenLive()
 	return iosource::IOSource::Start(live_callback, pcap_fileno(pd));
 	}
 
-bool PcapSource::OpenFile()
+bool PcapSource::OpenOffline()
 	{
 	char errbuf[PCAP_ERRBUF_SIZE];
 
@@ -174,14 +176,14 @@ bool PcapSource::OpenFile()
 	return iosource::IOSource::Start(file_callback);
 	}
 
-void PcapSource::Init()
+void PcapSource::Open()
 	{
-	bool result = props.is_live ? OpenLive() : OpenFile();
+	bool result = props.is_live ? OpenLive() : OpenOffline();
 	
 	if ( result )
-		Opened();
+		Opened(props);
 	else
-		Stop();
+		Close();
 	}
 
 void PcapSource::GetPacket()
@@ -208,7 +210,7 @@ void PcapSource::GetPacket()
 		// it's timed out. If it's a file, though, then the file has been
 		// exhausted.
 		if ( ! props.is_live )
-			Stop();
+			Close();
 
 		return;
 		}
@@ -235,7 +237,7 @@ void PcapSource::GetPacket()
 		Process();
 	}
 
-void PcapSource::Stop()
+void PcapSource::Close()
 	{
 	if ( ! pd )
 		return;
@@ -246,6 +248,83 @@ void PcapSource::Stop()
 	pd = nullptr;
 
 	Closed();
+	}
+
+bool PcapSource::PrecompileFilter(int index, const std::string& filter)
+	{
+	return PktSrc::PrecompileBPFFilter(index, filter);
+	}
+
+bool PcapSource::SetFilter(int index)
+	{
+	if ( ! pd )
+		return true; // Prevent error message
+
+	char errbuf[PCAP_ERRBUF_SIZE];
+
+	BPF_Program* code = GetBPFFilter(index);
+
+	if ( ! code )
+		{
+		safe_snprintf(errbuf, sizeof(errbuf),
+			      "No precompiled pcap filter for index %d",
+			      index);
+		Error(errbuf);
+		return false;
+		}
+
+	if ( LinkType() == DLT_NFLOG )
+		{
+		// No-op, NFLOG does not support BPF filters.
+		// Raising a warning might be good, but it would also be noisy
+		// since the default scripts will always attempt to compile
+		// and install a default filter
+		}
+	else
+		{
+		if ( pcap_setfilter(pd, code->GetProgram()) < 0 )
+			{
+			PcapError();
+			return false;
+			}
+		}
+
+#ifndef HAVE_LINUX
+	// Linux doesn't clear counters when resetting filter.
+	stats.received = stats.dropped = stats.link = stats.bytes_received = 0;
+#endif
+
+	return true;
+	}
+
+void PcapSource::Statistics(Stats* s)
+	{
+	char errbuf[PCAP_ERRBUF_SIZE];
+
+	if ( ! (props.is_live && pd) )
+		s->received = s->dropped = s->link = s->bytes_received = 0;
+
+	else
+		{
+		struct pcap_stat pstat;
+		if ( pcap_stats(pd, &pstat) < 0 )
+			{
+			PcapError();
+			s->received = s->dropped = s->link = s->bytes_received = 0;
+			}
+
+		else
+			{
+			s->dropped = pstat.ps_drop;
+			s->link = pstat.ps_recv;
+			}
+		}
+
+	s->received = stats.received;
+	s->bytes_received = stats.bytes_received;
+
+	if ( ! props.is_live )
+		s->dropped = 0;
 	}
 
 void PcapSource::SetHdrSize()
@@ -268,10 +347,10 @@ void PcapSource::PcapError(const std::string& where)
 	else
 		Error(fmt("pcap_error: not open%s", location.c_str()));
 
-	Stop();
+	Close();
 	}
 
-uvsource::PktSrc* PcapSource::Instantiate(uv_loop_t* loop, const std::string& path, bool is_live)
+iosource::PktSrc* PcapSource::Instantiate(uv_loop_t* loop, const std::string& path, bool is_live)
 	{
 	return new PcapSource(loop, path, is_live);
 	}

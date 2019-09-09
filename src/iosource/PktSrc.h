@@ -10,6 +10,10 @@
 #include "Dict.h"
 #include "Packet.h"
 
+namespace uvsource {
+	class Manager;
+	}
+
 namespace iosource {
 
 /**
@@ -26,31 +30,35 @@ public:
 		/**
 		 * Packets received by source after filtering (w/o drops).
 		 */
-		uint64_t received;
+		uint64_t received = 0;
 
 		/**
 		 * Packets dropped by source.
 		 */
-		uint64_t dropped;	// pkts dropped
+		uint64_t dropped = 0;	// pkts dropped
 
 		/**
 		 * Total number of packets on link before filtering.
 		 * Optional, can be left unset if not available.
 		 */
-		uint64_t link;
+		uint64_t link = 0;
 
 		/**
 		  * Bytes received by source after filtering (w/o drops).
 		*/
-		uint64_t bytes_received;
-
-		Stats()	{ received = dropped = link = bytes_received = 0; }
+		uint64_t bytes_received = 0;
 	};
 
 	/**
 	 * Constructor.
 	 */
+	ZEEK_DEPRECATED("Remove in v4.1. Packet sources should use the LibUV version of the constructor.")
 	PktSrc();
+
+	/**
+	 * Libuv-based constructor.
+	 */
+	PktSrc(uv_loop_t* loop);
 
 	/**
 	 * Destructor.
@@ -206,6 +214,8 @@ public:
 	virtual void Statistics(Stats* stats) = 0;
 
 protected:
+
+	friend class uvsource::Manager;
 	friend class Manager;
 
 	// Methods to use by derived classes.
@@ -225,26 +235,24 @@ protected:
 		 * A file descriptor suitable to use with \a select() for
 		 * determining if there's input available from this source.
 		 */
-		int selectable_fd;
+		int selectable_fd = -1;
 
 		/**
 		 * The link type for packets from this source.
 		 */
-		int link_type;
+		int link_type = -1;
 
 		/**
 		 * Returns the netmask associated with the source, or \c
 		 * NETMASK_UNKNOWN if unknown.
 		 */
-		uint32_t netmask;
+		uint32_t netmask = NETMASK_UNKNOWN;
 
 		/**
 		 * True if the source is reading live inout, false for
 		 * working offline.
 		 */
-		bool is_live;
-
-		Properties();
+		bool is_live = false;
 	};
 
 	/**
@@ -334,10 +342,18 @@ protected:
 	 */
 	virtual void DoneWithPacket() = 0;
 
-private:
-	// Checks if the current packet has a pseudo-time <= current_time. If
-	// yes, returns pseudo-time, otherwise 0.
+	/**
+	 * Checks if the current packet has a pseudo-time <= current_time. If
+	 * yes, returns pseudo-time, otherwise 0.
+	 */
 	double CheckPseudoTime();
+	
+	void Process() override;
+
+	bool have_packet = false;
+	Packet current_packet;
+
+private:
 
 	// Internal helper for ExtractNextPacket().
 	bool ExtractNextPacketInternal();
@@ -348,23 +364,19 @@ private:
 	void GetFds(iosource::FD_Set* read, iosource::FD_Set* write,
 	                    iosource::FD_Set* except) override;
 	double NextTimestamp(double* local_network_time) override;
-	void Process() override;
 	const char* Tag() override;
 
 	Properties props;
-
-	bool have_packet;
-	Packet current_packet;
 
 	// For BPF filtering support.
 	std::vector<BPF_Program *> filters;
 
 	// Only set in pseudo-realtime mode.
-	double first_timestamp;
-	double first_wallclock;
-	double current_wallclock;
-	double current_pseudo;
-	double next_sync_point; // For trace synchronziation in pseudo-realtime
+	double first_timestamp = 0.0;
+	double first_wallclock = 0.0;
+	double current_wallclock = 0.0;
+	double current_pseudo = 0.0;
+	double next_sync_point = 0.0; // For trace synchronziation in pseudo-realtime
 
 	std::string errbuf;
 };

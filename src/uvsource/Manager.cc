@@ -71,7 +71,7 @@ static std::pair<std::string, std::string> split_prefix(std::string path)
 	return std::make_pair(prefix, path);
 	}
 
-PktSrc* Manager::OpenPktSrc(const std::string& path, bool is_live)
+iosource::PktSrc* Manager::OpenPktSrc(const std::string& path, bool is_live)
 	{
 	std::pair<std::string, std::string> t = split_prefix(path);
 	std::string prefix = t.first;
@@ -101,7 +101,7 @@ PktSrc* Manager::OpenPktSrc(const std::string& path, bool is_live)
 
 	// Instantiate packet source. Instead of taking a loop as an argument to this method, we pass the loop from
 	// the manager's uv_check handle, so that the packet source ends up in the same loop.
-	PktSrc* ps = (*component->Factory())(handle.loop, npath, is_live);
+	iosource::PktSrc* ps = (*component->Factory())(handle.loop, npath, is_live);
 	assert(ps);
 
 	if ( ! ps->IsOpen() && ps->IsError() )

@@ -5,7 +5,7 @@
 #include <string>
 
 #include "iosource/IOSource.h"
-#include "PktSrc.h"
+#include "iosource/PktSrc.h"
 
 namespace uvsource {
 
@@ -31,7 +31,7 @@ public:
 	 *
 	 * @return The new packet source, or null if an error occured.
 	 */
-	PktSrc* OpenPktSrc(const std::string& path, bool is_live);
+	iosource::PktSrc* OpenPktSrc(const std::string& path, bool is_live);
 
 private:
 
