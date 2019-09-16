@@ -1,9 +1,7 @@
 // See the file "COPYING" in the main distribution directory for copyright.
 #ifdef USE_OPEN_DICT
-
 #include "OpenDict.h"
-
-#else//USE_OPEN_DICT
+#else
 
 #ifndef dict_h
 #define dict_h
@@ -124,6 +122,13 @@ public:
 	void Clear();
 
 	unsigned int MemoryAllocation() const;
+#ifdef USE_DICT_STATS
+public:
+	void Dump(int level=0) const;
+	int Capacity() const;
+	void DistanceStats(int& max_distance, int* distances=0, int num_distances=0) const;
+	void DumpKeys() const {};
+#endif//USE_DICT_STA
 
 private:
 	void Init(int size);
@@ -226,5 +231,6 @@ public:
 };
 
 #endif
+
 
 #endif//USE_OPEN_DICT

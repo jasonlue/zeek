@@ -243,6 +243,7 @@ set(MAIN_SRCS
     DebugLogger.cc
     Desc.cc
     Dict.cc
+    DictStats.cc
     Discard.cc
     DNS_Mgr.cc
     EquivClass.cc

@@ -39,10 +39,18 @@
 #include "siphash24.h"
 
 #ifdef DEBUG
-
 #include <assert.h>
 
-#define ASSERT(x)	assert(x)
+#ifdef DEBUGGING
+#include <signal.h>
+#define ASSERT(x)	\
+	if(!(x)) \
+		{\
+		raise(SIGTRAP);\
+		}
+#else
+#define ASSERT(x) assert(x)
+#endif//DEBUGGING
 #define DEBUG_MSG(x...)	fprintf(stderr, x)
 #define DEBUG_fputs	fputs
 

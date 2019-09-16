@@ -12,9 +12,10 @@
 #include "OpenDict.h"
 #include "Reporter.h"
 #include "util.h"
+#include "Conn.h"
 
 #ifdef DEBUG
-#define ASSERT_VALID(o) 0->AssertValid()
+#define ASSERT_VALID(o) o->AssertValid()
 #else
 #define ASSERT_VALID(o)
 #endif//DEBUG
@@ -379,6 +380,9 @@ void Dictionary::Dump(int level) const
 //////////////////////////////////////////////////////////////////////////////////////////////////
 //Initialization.
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+#ifdef USE_DICT_STATS
+extern std::vector<Dictionary*> dicts;
+#endif//USE_DICT_STATS
 Dictionary::Dictionary(dict_order ordering, int initial_size)
 	: remaps(0), log2_buckets(0), num_iterators(0), remap_end(-1), num_entries(0), max_entries(0), 
 	  cum_entries(0), delete_func(0), table(0), cookies(0), order(0)
@@ -395,10 +399,18 @@ Dictionary::Dictionary(dict_order ordering, int initial_size)
 		}
 	if ( ordering == ORDERED )
 		order = new std::vector<DictEntry>;
+
+#ifdef USE_DICT_STATS
+	dicts.push_back(this);
+#endif//USE_DICT_STATS
 	}
 
 Dictionary::~Dictionary()
 	{
+//	cout << " " << name << " dictionary destroyed with max items of " << MaxLength() << endl;
+#ifdef USE_DICT_STATS
+	dicts.erase(remove(dicts.begin(), dicts.end(), this), dicts.end());
+#endif//USE_DICT_STATS
 	Clear();//the place to free key memory. other place is to remove the entry
 	}
 
@@ -588,7 +600,7 @@ void* Dictionary::Insert(void* key, int key_size, hash_t hash, void* val, int co
 	else
 		{
 		//not found here.
-		//allocate memory for key if necesary. key is updated to reflect internal key if necessary.
+		//allocate memory for key if necesary. 
 		DictEntry entry(key, key_size, hash, val, insert_distance, copy_key);  
 		InsertRelocateAndAdjust(entry, insert_position); 
 		if(order)
@@ -600,14 +612,6 @@ void* Dictionary::Insert(void* key, int key_size, hash_t hash, void* val, int co
 			max_entries = num_entries;
 		if( num_entries > ThresholdEntries() )
 			SizeUp();
-	#ifdef DEBUG//validate the newly inserted entry can be looked up.
-		position = LookupIndex(key, key_size, hash);
-		if(position < 0)
-			{//if not found. stop here and try again. the second time is for step by step debugging.
-			ASSERT(false);
-			LookupIndex(key, key_size, hash);
-			}
-	#endif//DEBUG
 		}
 
 	//Remap after insert can adjust asap to shorten period of mixed table.

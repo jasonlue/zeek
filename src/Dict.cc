@@ -1,10 +1,7 @@
 // See the file "COPYING" in the main distribution directory for copyright.
-
 #ifdef USE_OPEN_DICT
-
 #include "OpenDict.cc"
-
-#else//USE_OPEN_DICT
+#else
 
 #include "zeek-config.h"
 
@@ -14,6 +11,10 @@
 
 #include "Dict.h"
 #include "Reporter.h"
+#ifdef USE_DICT_STATS
+#include "Conn.h"
+#include <algorithm>
+#endif//USE_DICT_STATS
 
 // If the mean bucket length exceeds the following then Insert() will
 // increase the size of the hash table.
@@ -61,6 +62,10 @@ public:
 	PList<DictEntry> inserted;	// inserted while iterating
 };
 
+#ifdef USE_DICT_STATS
+extern std::vector<Dictionary*> dicts;
+#endif//USE_DICT_STATS
+
 Dictionary::Dictionary(dict_order ordering, int initial_size)
 	{
 	tbl = 0;
@@ -82,10 +87,17 @@ Dictionary::Dictionary(dict_order ordering, int initial_size)
 
 	if ( initial_size > 0 )
 		Init(initial_size);
+
+	#ifdef USE_DICT_STATS
+	dicts.push_back(this);
+	#endif//USE_DICT_STATS
 	}
 
 Dictionary::~Dictionary()
 	{
+	#ifdef USE_DICT_STATS
+	dicts.erase(std::remove(dicts.begin(), dicts.end(), this), dicts.end());
+	#endif//USE_DICT_STATS
 	DeInit();
 	delete order;
 	}
@@ -638,5 +650,83 @@ void generic_delete_func(void* v)
 	{
 	free(v);
 	}
+
+#ifdef USE_DICT_STATS
+
+//functions for dict stats
+int Dictionary::Capacity() const
+	{	//tabl and chain size.
+	int num = 0;
+	for(int i=0; i<num_buckets; i++)
+		{
+			num += tbl ? (tbl[i] ? tbl[i]->max()+1 : 1) : 0;
+		}
+	for(int i=0; i<num_buckets2; i++)
+		{
+			num += tbl2 ? (tbl2[i] ? tbl2[i]->max()+1 : 1) : 0;
+		}
+	return num;
+	}
+
+void Dictionary::DistanceStats(int& max_distance, int* distances, int num_distances) const
+	{
+	max_distance = 0;
+	memset(distances, 0, sizeof(int) * num_distances);
+	if(tbl)
+		{
+		for(int i=0; i<num_buckets; i++)
+			{
+			if(!tbl[i] )
+				continue;
+			if( tbl[i]->length() > max_distance)
+				max_distance = tbl[i]->length();
+			if(!distances || num_distances <= 0)
+				continue;
+			for(int j=0; j<tbl[i]->length(); j++)
+				if( j < num_distances-1)
+					distances[j]++;
+				else
+					distances[num_distances-1]++;
+			}
+		}
+	if(tbl2)
+		{
+		for(int i=0; i<num_buckets2; i++)
+			{
+			if(!tbl2[i] )
+				continue;
+			if( tbl2[i]->length() > max_distance)
+				max_distance = tbl2[i]->length();
+			if(!distances || num_distances <= 0)
+				continue;
+			for(int j=0; j<tbl2[i]->length(); j++)
+				if( j < num_distances-1)
+					distances[j]++;
+				else
+					distances[num_distances-1]++;
+			}
+		}
+	}
+
+void Dictionary::Dump(int level) const 
+	{
+	int max_distance = 0;
+	#define DICT_NUM_DISTANCES 5
+	int distances[DICT_NUM_DISTANCES];
+	DistanceStats(max_distance, distances, DICT_NUM_DISTANCES);
+	printf("cap %'7d ent %'7d %'-7d load %.2f max_dist %3d mem %'10d mem/ent %3d ",
+		Capacity(), Length(), MaxLength(), (float)Length()/(tbl? Capacity() : 1), 
+		max_distance, MemoryAllocation(), MemoryAllocation()/(Length()?Length():1));
+
+	if(Length() > 0)
+		{
+		for(int i=0; i<DICT_NUM_DISTANCES-1; i++)
+			printf("[%d]%2d%% ", i, 100*distances[i]/Length());
+		printf("[%d+]%2d%% ", DICT_NUM_DISTANCES-1, 100*distances[DICT_NUM_DISTANCES-1]/Length());
+		}
+	printf("\n");
+	}
+
+#endif//USE_DICT_STATS
 
 #endif//USE_OPEN_DICT

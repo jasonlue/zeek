@@ -18,7 +18,8 @@ include(cmake/FindClangTidy.cmake)
 
 ########################################################################
 ## Project/Build Configuration
-
+set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O2 -DNDEBUG -g -fno-omit-frame-pointer")
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -DNDEBUG -g -fno-omit-frame-pointer")
 if ( ENABLE_CCACHE )
     find_program(CCACHE_PROGRAM ccache)
 

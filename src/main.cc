@@ -18,6 +18,8 @@ extern "C" {
 }
 #endif
 
+#include "DictStats.h"
+
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
@@ -399,6 +401,7 @@ static void bro_new_handler()
 
 int main(int argc, char** argv)
 	{
+	std::setlocale(LC_ALL, "");
 	std::set_new_handler(bro_new_handler);
 
 	double time_start = current_time(true);
@@ -501,7 +504,7 @@ int main(int argc, char** argv)
 	opterr = 0;
 
 	char opts[256];
-	safe_strncpy(opts, "B:e:f:G:H:I:i:n:p:r:s:T:t:U:w:X:CFNPQSWabdhv",
+	safe_strncpy(opts, "!:B:e:f:G:H:I:i:n:p:r:s:T:t:U:w:X:CFNPQSWabdhv",
 		     sizeof(opts));
 
 #ifdef USE_PERFTOOLS_DEBUG
@@ -649,6 +652,14 @@ int main(int argc, char** argv)
 			break;
 #endif
 
+#ifdef USE_DICT_STATS
+		case '!':
+			init_random_seed((seed_load_file && *seed_load_file ? seed_load_file : 0) , seed_save_file);
+			// DEBUG_MSG("HMAC key: %s\n", md5_digest_print(shared_hmac_md5_key));
+			init_hash_function();
+			TestDictMain(argv[0], optarg);
+			exit(0);
+#endif//USE_DICT_STATS
 		case 0:
 			// This happens for long options that don't have
 			// a short-option equivalent.
@@ -1079,7 +1090,7 @@ int main(int argc, char** argv)
 			}
 
 		net_run();
-
+		DICT_STATS();
 		double time_net_done = current_time(true);;
 
 		uint64_t mem_net_done_total;
