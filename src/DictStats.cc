@@ -53,17 +53,19 @@ class MeasureSpace{
         {
             uint64_t total, malloced2 = 0;
             get_memory_usage(&total, &malloced2);
-            uint64 m = malloced2 - malloced;
+            uint64_t m = malloced2 - malloced;
             if(count > 0)
+            {
                 m /= count;
                 printf("$20s: %'d bytes.\n", (int)m);
+            }
         }
 
     private:
         std::string msg;
         long count;
         uint64_t malloced;
-}
+};
 
 vector<Dictionary*> dicts;
 
@@ -182,6 +184,15 @@ void DumpDictKeys( int top_n )
     return true;
     }
 
+ bool LoadStringHashKeys(vector<HashKey*>& keys, string key_file)
+    {
+ 	fstream g(key_file, ios::in);
+    string l;
+    while(getline(g,l))
+        keys.push_back(new HashKey(l.c_str(), l.length()));
+    return true;
+    }
+
 bool LoadHashKeys(vector<HashKey*>& keys, string key_file)
     {
     vector<HashKey*> connections;
@@ -238,6 +249,72 @@ void TestStringDictInsert(string key_file)
     }
 
 void StringDictPerf(string cmd, string key_file, int num_keys, int rounds)
+    {
+    char* value = new char[1];
+    vector<HashKey*> keys;
+    LoadStringHashKeys(keys, key_file);
+    int items = (int)keys.size();
+    if( num_keys < 0)
+        num_keys = items;
+    else if( num_keys > items)
+        num_keys = items;
+    cout <<  "\n" << cmd << " dict " << key_file << " size: " << num_keys << " rounds: " << rounds << endl;
+    PDict<char> d0;
+    for(int j = 0; j < num_keys; j++)
+        d0.Insert(keys[j], value);
+    d0.Dump();
+
+    uint64_t total = 0, malloced = 0, malloced2 = 0;
+    get_memory_usage(&total, &malloced);
+   PDict<char>* d = new PDict<char>[rounds];//(/*UNORDERED*/);
+
+    random_shuffle(keys.begin(), keys.end());
+    {
+        MeasureTime m("Insert", rounds*num_keys);
+        for(int i = 0; i < rounds; i++)
+            for(int j = 0; j < num_keys; j++)
+                d[i].Insert(keys[j], value);
+    }
+    get_memory_usage(&total, &malloced2);
+    cout << "memory/entry: " << (malloced2 - malloced)/rounds/num_keys << endl;
+    random_shuffle(keys.begin(), keys.end());
+    {
+        MeasureTime m("Successful Lookup", rounds*num_keys);
+        for(int i = 0; i < rounds; i++)
+            for(int j = 0; j < num_keys; j++)
+                d[i].Lookup(keys[j]);
+    }
+
+    vector<HashKey*> lower_keys;
+    char key[4096];
+    for(auto hk:keys)
+        {
+        for(int j = 0; j < (int)hk->Size(); j++)
+            {
+            const char* k = (const char*)hk->Key();
+            key[j] = tolower(k[j]);
+            }
+        lower_keys.push_back(new HashKey(key, hk->Size()));
+        }
+
+    {
+        MeasureTime m("Unsuccessful Lookup", rounds*num_keys);
+        for(int i=0; i<rounds; i++)
+            for(int j = 0; j < num_keys; j++)
+                d[i].Lookup(lower_keys[j]);
+    }
+
+    random_shuffle(keys.begin(), keys.end());
+    {
+        MeasureTime m("Remove", rounds*num_keys);
+        for(int i=0; i<rounds; i++)
+            for(int j = 0; j < num_keys; j++)
+                d[i].RemoveEntry(keys[j]);
+    }
+    delete []d;
+    }
+
+void StringDictPerf2(string cmd, string key_file, int num_keys, int rounds)
     {
     char* value = new char[1];
     vector<string> keys;
@@ -413,10 +490,10 @@ void BinaryDictPerf(string cmd, string key_file, int num_keys, int rounds)
     for(int j = 0; j < num_keys; j++)
         d0.Insert(connections[j], value);
     d0.Dump();
+    PDict<char>* d = new PDict<char>[rounds];
 
     {
-        MeasureSpace space("dict". rounds*num_keys);
-        PDict<char>* d = new PDict<char>[rounds];
+        MeasureSpace space("dict", rounds*num_keys);
         random_shuffle(connections.begin(), connections.end());
         {
             MeasureTime m("Insert", rounds*num_keys);
