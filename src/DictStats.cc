@@ -435,7 +435,6 @@ void StringMapPerf(string cmd, string key_file, int num_keys, int rounds)
             }
     }
     delete []d;
-
     }
 
 void StringMapPerf2(string cmd, string key_file, int num_keys, int rounds)
