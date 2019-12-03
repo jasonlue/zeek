@@ -248,7 +248,7 @@ void TestStringDictInsert(string key_file)
     d.Dump();
     }
 
-void StringDictPerf(string cmd, string key_file, int num_keys, int rounds)
+void StringDictPerf2(string cmd, string key_file, int num_keys, int rounds)
     {
     char* value = new char[1];
     vector<HashKey*> keys;
@@ -314,7 +314,7 @@ void StringDictPerf(string cmd, string key_file, int num_keys, int rounds)
     delete []d;
     }
 
-void StringDictPerf2(string cmd, string key_file, int num_keys, int rounds)
+void StringDictPerf(string cmd, string key_file, int num_keys, int rounds)
     {
     char* value = new char[1];
     vector<string> keys;
@@ -374,7 +374,71 @@ void StringDictPerf2(string cmd, string key_file, int num_keys, int rounds)
     delete []d;
     }
 
+struct Hasher
+    {
+    std::size_t operator()(string const& k) const
+        {
+        return HashKey::HashBytes(k.c_str(), k.length());
+        }
+    };
+
 void StringMapPerf(string cmd, string key_file, int num_keys, int rounds)
+    {
+    char* value = new char[1];
+    vector<string> keys;
+    LoadStringKeys(keys, key_file);
+    int items = (int)keys.size();
+    if( num_keys < 0)
+        num_keys = items;
+    else if( num_keys > items)
+        num_keys = items;
+    cout <<  "\n" << cmd << " unordered map " << key_file << " size: " << num_keys << " rounds: " << rounds << endl;
+
+    uint64_t total = 0, malloced = 0, malloced2 = 0;
+    get_memory_usage(&total, &malloced);
+    unordered_map<string, char*, Hasher>* d = new unordered_map<string, char*, Hasher>[rounds];
+    random_shuffle(keys.begin(), keys.end());
+    {
+        MeasureTime m("Insert", rounds*num_keys);
+        for(int i = 0; i < rounds; i++)
+            for(int j = 0; j < num_keys; j++)
+                d[i].emplace(keys[j], new char[1]);
+    }
+    get_memory_usage(&total, &malloced2);
+    cout << "memory/entry: " << (malloced2 - malloced)/rounds/num_keys << endl;
+    random_shuffle(keys.begin(), keys.end());
+    {
+        MeasureTime m("Successful Lookup", rounds*num_keys);
+        for(int i = 0; i < rounds; i++)
+            for(int j = 0; j < num_keys; j++)
+                d[i].find(keys[j]);
+    }
+
+    for(int i=0; i<(int)keys.size(); i++)
+        for(int j = 0; j< (int)keys[i].size(); j++)
+            keys[i][j] = tolower(keys[i][j]);
+
+    {
+        MeasureTime m("Unsuccessful Lookup", rounds*num_keys);
+        for(int i=0; i<rounds; i++)
+            for(int j = 0; j < num_keys; j++)
+                d[i].find(keys[j]);
+    }
+
+    random_shuffle(keys.begin(), keys.end());
+    {
+        MeasureTime m("Remove", rounds*num_keys);
+        for(int i=0; i<rounds; i++)
+            {
+            for(int j = 0; j < num_keys; j++)
+                d[i].erase(keys[i]);
+            }
+    }
+    delete []d;
+
+    }
+
+void StringMapPerf2(string cmd, string key_file, int num_keys, int rounds)
     {
     char* value = new char[1];
     vector<string> keys;
