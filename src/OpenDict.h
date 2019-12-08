@@ -330,8 +330,20 @@ public:
 		HashKey h(key);
 		return (T*) Dictionary::Lookup(&h);
 		}
+	T* Lookup2(const char* key) const
+		{
+		int key_size = strlen(key);
+		hash_t hash = HashKey::HashBytes(key, key_size);
+		return (T*) Dictionary::Lookup(key, key_size, hash);
+		}
 	T* Lookup(const HashKey* key) const
 		{ return (T*) Dictionary::Lookup(key); }
+	T* Insert2(const char* key, T* val)
+		{
+		int key_size = strlen(key);
+		hash_t hash = HashKey::HashBytes(key, key_size);
+		return (T*)Dictionary::Insert(const_cast<char*>(key),key_size, hash, val, 1);
+		}
 	T* Insert(const char* key, T* val)
 		{
 		HashKey h(key);
@@ -355,6 +367,12 @@ public:
 		{ return (T*) Dictionary::NextEntry(h, cookie, 1); }
 	T* RemoveEntry(const HashKey* key)
 		{ return (T*) Remove(key->Key(), key->Size(), key->Hash()); }
+	T* RemoveEntry2(const char* key)
+		{
+		int key_size = strlen(key);
+		hash_t hash = HashKey::HashBytes(key, key_size);
+		return (T*) Remove(key, key_size, hash); 
+		}
 };
 
 #endif//odict_h

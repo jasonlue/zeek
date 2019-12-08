@@ -248,7 +248,7 @@ void TestStringDictInsert(string key_file)
     d.Dump();
     }
 
-void StringDictPerf2(string cmd, string key_file, int num_keys, int rounds)
+void StringDictPerf22(string cmd, string key_file, int num_keys, int rounds)
     {
     char* value = new char[1];
     vector<HashKey*> keys;
@@ -374,6 +374,60 @@ void StringDictPerf(string cmd, string key_file, int num_keys, int rounds)
     delete []d;
     }
 
+void StringDictPerf2(string cmd, string key_file, int num_keys, int rounds)
+    {
+    char* value = new char[1];
+    vector<string> keys;
+    LoadStringKeys(keys, key_file);
+    int items = (int)keys.size();
+    if( num_keys < 0)
+        num_keys = items;
+    else if( num_keys > items)
+        num_keys = items;
+    cout <<  "\n" << cmd << " dict2 " << key_file << " size: " << num_keys << " rounds: " << rounds << endl;
+
+    uint64_t total = 0, malloced = 0, malloced2 = 0;
+    get_memory_usage(&total, &malloced);
+   PDict<char>* d = new PDict<char>[rounds];//(/*UNORDERED*/);
+
+    random_shuffle(keys.begin(), keys.end());
+    {
+        MeasureTime m("Insert", rounds*num_keys);
+        for(int i = 0; i < rounds; i++)
+            for(int j = 0; j < num_keys; j++)
+                d[i].Insert2(keys[j].c_str(), value);
+    }
+    get_memory_usage(&total, &malloced2);
+    cout << "memory/entry: " << (malloced2 - malloced)/rounds/num_keys << endl;
+    //d[0].Dump();
+    random_shuffle(keys.begin(), keys.end());
+    {
+        MeasureTime m("Successful Lookup", rounds*num_keys);
+        for(int i = 0; i < rounds; i++)
+            for(int j = 0; j < num_keys; j++)
+                d[i].Lookup2(keys[j].c_str());
+    }
+
+    for(int i=0; i<(int)keys.size(); i++)
+        for(int j = 0; j< (int)keys[i].size(); j++)
+            keys[i][j] = tolower(keys[i][j]);
+
+    {
+        MeasureTime m("Unsuccessful Lookup", rounds*num_keys);
+        for(int i=0; i<rounds; i++)
+            for(int j = 0; j < num_keys; j++)
+                d[i].Lookup2(keys[j].c_str());
+    }
+
+    random_shuffle(keys.begin(), keys.end());
+    {
+        MeasureTime m("Remove", rounds*num_keys);
+        for(int i=0; i<rounds; i++)
+            for(int j = 0; j < num_keys; j++)
+                d[i].RemoveEntry2(keys[j].c_str());
+    }
+    delete []d;
+    }
 struct Hasher
     {
     std::size_t operator()(string const& k) const
