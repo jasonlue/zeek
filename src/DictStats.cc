@@ -258,7 +258,7 @@ void StringDictPerf2(string cmd, string key_file, int num_keys, int rounds)
         num_keys = items;
     else if( num_keys > items)
         num_keys = items;
-    cout <<  "\n" << cmd << " dict " << key_file << " size: " << num_keys << " rounds: " << rounds << endl;
+    cout <<  "\n" << cmd << " dict(hash outside) " << key_file << " size: " << num_keys << " rounds: " << rounds << endl;
     PDict<char> d0;
     for(int j = 0; j < num_keys; j++)
         d0.Insert(keys[j], value);
@@ -447,7 +447,7 @@ void StringMapPerf2(string cmd, string key_file, int num_keys, int rounds)
         num_keys = items;
     else if( num_keys > items)
         num_keys = items;
-    cout <<  "\n" << cmd << " unordered map " << key_file << " size: " << num_keys << " rounds: " << rounds << endl;
+    cout <<  "\n" << cmd << " unordered map (regular hash) " << key_file << " size: " << num_keys << " rounds: " << rounds << endl;
 
     uint64_t total = 0, malloced = 0, malloced2 = 0;
     get_memory_usage(&total, &malloced);
@@ -760,6 +760,8 @@ void TestDictMain(string cmd, string param)
     {
         StringDictPerf(cmd, key_file, size, rounds);
         StringMapPerf(cmd, key_file, size, rounds);
+        StringDictPerf2(cmd, key_file, size, rounds);
+        StringMapPerf2(cmd, key_file, size, rounds);
     }
     else
         BinaryDictPerf(cmd, key_file, size, rounds);
