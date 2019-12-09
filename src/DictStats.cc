@@ -19,6 +19,8 @@
 #include <iostream>
 using namespace std;
 
+#include <gperftools/malloc_extension.h>
+
 #include "Dict.h"
 #include "util.h"
 
@@ -66,6 +68,13 @@ class MeasureSpace{
         long count;
         uint64_t malloced;
 };
+
+void DumpMemInfo()
+    {
+    char buffer[1024];
+    MallocExtension::instance()->GetStats(buffer, 1024);
+    printf("%s", buffer);
+    }
 
 string RandomString()
 {//1-100 len
@@ -288,7 +297,9 @@ void StringDictPerf(string cmd, string key_file, int num_keys, int rounds)
                 d[i].Insert(keys[j], value);
     }
     get_memory_usage(&total, &malloced2);
+
     cout << "memory/entry: " << (malloced2 - malloced)/rounds/num_keys << endl;
+    DumpMemInfo();
     random_shuffle(keys.begin(), keys.end());
     {
         MeasureTime m("Successful Lookup", rounds*num_keys);
@@ -363,6 +374,7 @@ void StringDictPerf_StringHash(string cmd, string key_file, int num_keys, int ro
     }
     get_memory_usage(&total, &malloced2);
     cout << "memory/entry: " << (malloced2 - malloced)/rounds/num_keys << endl;
+    DumpMemInfo();
     random_shuffle(keys.begin(), keys.end());
     {
         MeasureTime m("Successful Lookup", rounds*num_keys);
@@ -441,6 +453,7 @@ void StringMapPerf_ZeekHash(string cmd, string key_file, int num_keys, int round
     }
     get_memory_usage(&total, &malloced2);
     cout << "memory/entry: " << (malloced2 - malloced)/rounds/num_keys << endl;
+    DumpMemInfo();
     random_shuffle(keys.begin(), keys.end());
     {
         MeasureTime m("Successful Lookup", rounds*num_keys);
@@ -466,7 +479,7 @@ void StringMapPerf_ZeekHash(string cmd, string key_file, int num_keys, int round
         for(int i=0; i<rounds; i++)
             {
             for(int j = 0; j < num_keys; j++)
-                d[i].erase(keys[i]);
+                d[i].erase(keys[i]); 
             }
     }
     delete []d;
@@ -496,6 +509,7 @@ void StringMapPerf_StringHash(string cmd, string key_file, int num_keys, int rou
     }
     get_memory_usage(&total, &malloced2);
     cout << "memory/entry: " << (malloced2 - malloced)/rounds/num_keys << endl;
+    DumpMemInfo();
     random_shuffle(keys.begin(), keys.end());
     {
         MeasureTime m("Successful Lookup", rounds*num_keys);
