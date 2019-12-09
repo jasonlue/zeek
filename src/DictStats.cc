@@ -67,6 +67,18 @@ class MeasureSpace{
         uint64_t malloced;
 };
 
+string RandomString()
+{//1-100 len
+    char ch[101];
+    int r = rand() % 100;
+    ch[r] = 0;
+    for( int i=0; i<r; i++)
+        {
+        int c = rand() % 52;
+        ch[i] = c >= 26 ? (c-26 + 'a') : c + 'A';
+        }
+    return string((char*)ch);
+}
 vector<Dictionary*> dicts;
 
 bool DictLessThan(Dictionary* l, Dictionary* r)
@@ -247,8 +259,8 @@ void TestStringDictInsert(string key_file)
         }
     d.Dump();
     }
-
-void StringDictPerf22(string cmd, string key_file, int num_keys, int rounds)
+    
+void StringDictPerf(string cmd, string key_file, int num_keys, int rounds)
     {
     char* value = new char[1];
     vector<HashKey*> keys;
@@ -258,7 +270,7 @@ void StringDictPerf22(string cmd, string key_file, int num_keys, int rounds)
         num_keys = items;
     else if( num_keys > items)
         num_keys = items;
-    cout <<  "\n" << cmd << " dict(hash outside) " << key_file << " size: " << num_keys << " rounds: " << rounds << endl;
+    cout <<  "\n" << cmd << " StringDictPerf " << key_file << " size: " << num_keys << " rounds: " << rounds << endl;
     PDict<char> d0;
     for(int j = 0; j < num_keys; j++)
         d0.Insert(keys[j], value);
@@ -314,17 +326,26 @@ void StringDictPerf22(string cmd, string key_file, int num_keys, int rounds)
     delete []d;
     }
 
-void StringDictPerf(string cmd, string key_file, int num_keys, int rounds)
+void StringDictPerf_StringHash(string cmd, string key_file, int num_keys, int rounds)
     {
     char* value = new char[1];
-    vector<string> keys;
-    LoadStringKeys(keys, key_file);
+    vector<HashKey*> keys;
+    LoadStringHashKeys(keys, key_file);
+    vector<string> strkeys;
+    LoadStringKeys(strkeys, key_file);
+    typedef unordered_map<string, int> StringMap;
+    StringMap stringMap;
+    StringMap::hasher fn = stringMap.hash_function();
     int items = (int)keys.size();
     if( num_keys < 0)
         num_keys = items;
     else if( num_keys > items)
         num_keys = items;
-    cout <<  "\n" << cmd << " dict " << key_file << " size: " << num_keys << " rounds: " << rounds << endl;
+    cout <<  "\n" << cmd << " StringDictPerf_StringHash " << key_file << " size: " << num_keys << " rounds: " << rounds << endl;
+    PDict<char> d0;
+    for(int j = 0; j < num_keys; j++)
+        d0.Insert(keys[j], value);
+    d0.Dump();
 
     uint64_t total = 0, malloced = 0, malloced2 = 0;
     get_memory_usage(&total, &malloced);
@@ -334,89 +355,45 @@ void StringDictPerf(string cmd, string key_file, int num_keys, int rounds)
     {
         MeasureTime m("Insert", rounds*num_keys);
         for(int i = 0; i < rounds; i++)
-            for(int j = 0; j < num_keys; j++)
-                d[i].Insert(keys[j].c_str(), value);
-    }
-    get_memory_usage(&total, &malloced2);
-    cout << "memory/entry: " << (malloced2 - malloced)/rounds/num_keys << endl;
-    //d[0].Dump();
-    random_shuffle(keys.begin(), keys.end());
-    {
-        MeasureTime m("Successful Lookup", rounds*num_keys);
-        for(int i = 0; i < rounds; i++)
-            for(int j = 0; j < num_keys; j++)
-                d[i].Lookup(keys[j].c_str());
-    }
-
-    for(int i=0; i<(int)keys.size(); i++)
-        for(int j = 0; j< (int)keys[i].size(); j++)
-            keys[i][j] = tolower(keys[i][j]);
-
-    {
-        MeasureTime m("Unsuccessful Lookup", rounds*num_keys);
-        for(int i=0; i<rounds; i++)
-            for(int j = 0; j < num_keys; j++)
-                d[i].Lookup(keys[j].c_str());
-    }
-
-    random_shuffle(keys.begin(), keys.end());
-    {
-        MeasureTime m("Remove", rounds*num_keys);
-        for(int i=0; i<rounds; i++)
-            {
             for(int j = 0; j < num_keys; j++)
                 {
-                HashKey hk(keys[j].c_str());
-                d[i].RemoveEntry(&hk);
+                fn(strkeys[j]);
+                d[i].Insert(keys[j], value);
                 }
-            }
-    }
-    delete []d;
-    }
-
-void StringDictPerf2(string cmd, string key_file, int num_keys, int rounds)
-    {
-    char* value = new char[1];
-    vector<string> keys;
-    LoadStringKeys(keys, key_file);
-    int items = (int)keys.size();
-    if( num_keys < 0)
-        num_keys = items;
-    else if( num_keys > items)
-        num_keys = items;
-    cout <<  "\n" << cmd << " dict2 " << key_file << " size: " << num_keys << " rounds: " << rounds << endl;
-
-    uint64_t total = 0, malloced = 0, malloced2 = 0;
-    get_memory_usage(&total, &malloced);
-   PDict<char>* d = new PDict<char>[rounds];//(/*UNORDERED*/);
-
-    random_shuffle(keys.begin(), keys.end());
-    {
-        MeasureTime m("Insert", rounds*num_keys);
-        for(int i = 0; i < rounds; i++)
-            for(int j = 0; j < num_keys; j++)
-                d[i].Insert2(keys[j].c_str(), value);
     }
     get_memory_usage(&total, &malloced2);
     cout << "memory/entry: " << (malloced2 - malloced)/rounds/num_keys << endl;
-    //d[0].Dump();
     random_shuffle(keys.begin(), keys.end());
     {
         MeasureTime m("Successful Lookup", rounds*num_keys);
         for(int i = 0; i < rounds; i++)
             for(int j = 0; j < num_keys; j++)
-                d[i].Lookup2(keys[j].c_str());
+                {
+                fn(strkeys[j]);
+                d[i].Lookup(keys[j]);
+                }
     }
 
-    for(int i=0; i<(int)keys.size(); i++)
-        for(int j = 0; j< (int)keys[i].size(); j++)
-            keys[i][j] = tolower(keys[i][j]);
+    vector<HashKey*> lower_keys;
+    char key[4096];
+    for(auto hk:keys)
+        {
+        for(int j = 0; j < (int)hk->Size(); j++)
+            {
+            const char* k = (const char*)hk->Key();
+            key[j] = tolower(k[j]);
+            }
+        lower_keys.push_back(new HashKey(key, hk->Size()));
+        }
 
     {
         MeasureTime m("Unsuccessful Lookup", rounds*num_keys);
         for(int i=0; i<rounds; i++)
             for(int j = 0; j < num_keys; j++)
-                d[i].Lookup2(keys[j].c_str());
+                {
+                fn(strkeys[j]);
+                d[i].Lookup(lower_keys[j]);
+                }
     }
 
     random_shuffle(keys.begin(), keys.end());
@@ -424,10 +401,14 @@ void StringDictPerf2(string cmd, string key_file, int num_keys, int rounds)
         MeasureTime m("Remove", rounds*num_keys);
         for(int i=0; i<rounds; i++)
             for(int j = 0; j < num_keys; j++)
-                d[i].RemoveEntry2(keys[j].c_str());
+                {
+                fn(strkeys[j]);
+                d[i].RemoveEntry(keys[j]);
+                }
     }
     delete []d;
     }
+
 struct Hasher
     {
     std::size_t operator()(string const& k) const
@@ -436,7 +417,7 @@ struct Hasher
         }
     };
 
-void StringMapPerf(string cmd, string key_file, int num_keys, int rounds)
+void StringMapPerf_ZeekHash(string cmd, string key_file, int num_keys, int rounds)
     {
     char* value = new char[1];
     vector<string> keys;
@@ -446,7 +427,7 @@ void StringMapPerf(string cmd, string key_file, int num_keys, int rounds)
         num_keys = items;
     else if( num_keys > items)
         num_keys = items;
-    cout <<  "\n" << cmd << " unordered map " << key_file << " size: " << num_keys << " rounds: " << rounds << endl;
+    cout <<  "\n" << cmd << " StringMapPerf_ZeekHash " << key_file << " size: " << num_keys << " rounds: " << rounds << endl;
 
     uint64_t total = 0, malloced = 0, malloced2 = 0;
     get_memory_usage(&total, &malloced);
@@ -491,7 +472,7 @@ void StringMapPerf(string cmd, string key_file, int num_keys, int rounds)
     delete []d;
     }
 
-void StringMapPerf2(string cmd, string key_file, int num_keys, int rounds)
+void StringMapPerf_StringHash(string cmd, string key_file, int num_keys, int rounds)
     {
     char* value = new char[1];
     vector<string> keys;
@@ -501,7 +482,7 @@ void StringMapPerf2(string cmd, string key_file, int num_keys, int rounds)
         num_keys = items;
     else if( num_keys > items)
         num_keys = items;
-    cout <<  "\n" << cmd << " unordered map (regular hash) " << key_file << " size: " << num_keys << " rounds: " << rounds << endl;
+    cout <<  "\n" << cmd << " StringMapPerf_StringHash " << key_file << " size: " << num_keys << " rounds: " << rounds << endl;
 
     uint64_t total = 0, malloced = 0, malloced2 = 0;
     get_memory_usage(&total, &malloced);
@@ -545,52 +526,6 @@ void StringMapPerf2(string cmd, string key_file, int num_keys, int rounds)
     }
     delete []d;
     }
-
-void unordered(int size, int rounds)
-	{
-	fprintf(stderr, "std::unordered_map\n");
-	std::unordered_map<int, int*> m;
-    int* keys = new int[size]; 
-    for(int i=0; i<size; i++)
-        keys[i] = i;
-    random_shuffle(&keys[0], &keys[size]);
-	int* val = new int(1);
-
-	struct timespec ts;
-	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &ts);
-	uint64_t last = (ts.tv_sec * 1000000000) + ts.tv_nsec;
-	for (int i = 0; i < size; i++ )
-		m.emplace(keys[i], new int(keys[i]));
-
-    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &ts);
-    uint64_t now = (ts.tv_sec * 1000000000) + ts.tv_nsec;
-    printf("%d,%llu\n", size, (now-last)/size);
-    delete []keys;
-	}
-
-void dict(int size, int rounds)
-	{
-	fprintf(stderr, "dict\n");
-	PDict<int> d;
-    int* keys = new int[size]; 
-    for(int i=0; i<size; i++)
-        keys[i] = i;
-    random_shuffle(&keys[0], &keys[size]);
-
-	struct timespec ts;
-	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &ts);
-	uint64_t last = (ts.tv_sec * 1000000000) + ts.tv_nsec;
-	for ( int i = 0; i < size; i++ )
-    {
-		HashKey* h = new HashKey(bro_int_t(i));
-		d.Insert(h, new int(i));        
-    }
-    //d.Insert(&keys[i], sizeof(int), std::hash<int>()(keys[i]), new int(keys[i]), 1);
-    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &ts);
-    uint64_t now = (ts.tv_sec * 1000000000) + ts.tv_nsec;
-    printf("%d,%llu\n", size, (now-last)/size);
-    delete []keys;
-	}
 
 void BinaryDictPerf(string cmd, string key_file, int num_keys, int rounds)
     {
@@ -790,15 +725,16 @@ bool HasSuffix(string full, string suffix)
     }
 
 void TestDictMain(string cmd, string param)
-    {//key_file@size:rounds
+    {//key_file@size:rounds:function
     istringstream p(param);
-    string key_file, s, r;
+    string key_file, s, r, f;
     int size = 100;
     int rounds = 10;
     getline(p, key_file, '@');
     if( getline(p, s, ':'))
     {
-        getline(p, r);
+        if( getline(p, r, ':') )
+            getline(p, f, ':');
     }
 
     if( !r.empty())
@@ -806,16 +742,16 @@ void TestDictMain(string cmd, string param)
     if( !s.empty() )
         size = stoi(s);
 
-//    dict(size, rounds);
-    //getchar();
- //   unordered(size, rounds);
-  //  return;
     if( HasSuffix(key_file, ".ckey") )
     {
-        StringDictPerf(cmd, key_file, size, rounds);
-        StringMapPerf(cmd, key_file, size, rounds);
-        StringDictPerf2(cmd, key_file, size, rounds);
-        StringMapPerf2(cmd, key_file, size, rounds);
+        if( f == "StringDictPerf" )
+            StringDictPerf(cmd, key_file, size, rounds);
+        else if( f == "StringDictPerf_StringHash" )
+            StringDictPerf_StringHash(cmd, key_file, size, rounds);
+        else if( f == "StringMapPerf_ZeekHash" )
+            StringMapPerf_ZeekHash(cmd, key_file, size, rounds);
+        else if( f == "StringMapPerf_StringHash")
+            StringMapPerf_StringHash(cmd, key_file, size, rounds);
     }
     else
         BinaryDictPerf(cmd, key_file, size, rounds);

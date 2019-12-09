@@ -654,6 +654,7 @@ int main(int argc, char** argv)
 
 #ifdef USE_DICT_STATS
 		case '!':
+			srand(time(NULL));
 			init_random_seed((seed_load_file && *seed_load_file ? seed_load_file : 0) , seed_save_file);
 			// DEBUG_MSG("HMAC key: %s\n", md5_digest_print(shared_hmac_md5_key));
 			init_hash_function();
