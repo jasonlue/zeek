@@ -76,18 +76,26 @@ void DumpMemInfo()
     printf("%s", buffer);
     }
 
-string RandomString()
-{//1-100 len
-    char ch[101];
-    int r = rand() % 100;
-    ch[r] = 0;
-    for( int i=0; i<r; i++)
+void RandomString( string f, int n)
+{//1-64 len
+    ofstream fs(f);
+    if( !fs.is_open())
+        return;
+
+    char ch[65];
+    for(int i=0; i<n; i++)
         {
-        int c = rand() % 52;
-        ch[i] = c >= 26 ? (c-26 + 'a') : c + 'A';
-        }
-    return string((char*)ch);
+        int r = rand() % 64;
+        ch[r] = 0;
+        for( int j=0; j<r; j++)
+            {
+            int c = rand() % 52;
+            ch[j] = c >= 26 ? (c-26 + 'a') : c + 'A';
+            }
+        fs << ch << endl;
+        }    
 }
+
 vector<Dictionary*> dicts;
 
 bool DictLessThan(Dictionary* l, Dictionary* r)
@@ -479,7 +487,7 @@ void StringMapPerf_ZeekHash(string cmd, string key_file, int num_keys, int round
         for(int i=0; i<rounds; i++)
             {
             for(int j = 0; j < num_keys; j++)
-                d[i].erase(keys[i]); 
+                d[i].erase(keys[j]); 
             }
     }
     delete []d;
@@ -535,7 +543,7 @@ void StringMapPerf_StringHash(string cmd, string key_file, int num_keys, int rou
         for(int i=0; i<rounds; i++)
             {
             for(int j = 0; j < num_keys; j++)
-                d[i].erase(keys[i]);
+                d[i].erase(keys[j]);
             }
     }
     delete []d;
@@ -766,6 +774,8 @@ void TestDictMain(string cmd, string param)
             StringMapPerf_ZeekHash(cmd, key_file, size, rounds);
         else if( f == "StringMapPerf_StringHash")
             StringMapPerf_StringHash(cmd, key_file, size, rounds);
+        else if( f == "RandomString")
+            RandomString(key_file, size);
     }
     else
         BinaryDictPerf(cmd, key_file, size, rounds);
