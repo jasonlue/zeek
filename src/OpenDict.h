@@ -1,14 +1,7 @@
 // See the file "COPYING" in the main distribution directory for copyright.
 //Clustered Hashing, a variation of Robinhood Hashing/Open Addressing Hashing.
-//Ref following post links to help understand the implementation
-//https://jasonlue.github.io/algo/2019/08/20/clustered-hashing.html
-//https://jasonlue.github.io/algo/2019/08/27/clustered-hashing-basic-operations.html
-//https://jasonlue.github.io/algo/2019/09/03/clustered-hashing-incremental-resize.html
-//https://jasonlue.github.io/algo/2019/09/10/clustered-hashing-modify-on-iteration.html
 
-#ifndef odict_h
-#define odict_h
-
+#pragma once
 #include <vector>
 #include "Hash.h"
 #include <climits>
@@ -69,25 +62,25 @@ struct DictEntry{//24 bytes. perfectly alligned. always own the key. but not the
 		bucket = 0;
 		#endif//DEBUG
 		if( key_size <= 8)
-		{				
+			{				
 			memcpy(key_here, arg_key, key_size);
 			if(!copy_key)
 				delete (char*)arg_key; //own the arg_key, now don't need it.
-		}
+			}
 		else
-		{
-			if( copy_key )
 			{
+			if( copy_key )
+				{
 				key = new char[key_size];
 				memcpy(key, arg_key, key_size);
-			}
+				}
 			else
-			{
+				{
 				key = (char*)arg_key;
+				}
 			}
 		}
-		}
-	bool Empty() {return distance == TOO_FAR_TO_REACH;}
+	bool Empty()	{ return distance == TOO_FAR_TO_REACH; }
 	void SetEmpty()
 		{
 		distance = TOO_FAR_TO_REACH;
@@ -102,25 +95,25 @@ struct DictEntry{//24 bytes. perfectly alligned. always own the key. but not the
 
 	//if with no intent to release key memory, call SetEmpty instead. key pointer is shared when moving around.
 	void Clear() 
-	{//SetEmpty & release memory if allocated.
-		if(key_size > 8)
+		{//SetEmpty & release memory if allocated.
+		if( key_size > 8 )
 			delete key;
 		SetEmpty();
-	}
-	const char* GetKey() const {return key_size <= 8? key_here : key;}
+		}
+	const char* GetKey() const { return key_size <= 8? key_here : key; }
 	bool Equal(const char* arg_key, int arg_key_size, hash_t arg_hash) const
-	{//only 40-bit hash comparison.
-		return (0 == ((hash ^ arg_hash) & HASH_MASK)) 
+		{//only 40-bit hash comparison.
+		return ( 0 == ((hash ^ arg_hash) & HASH_MASK) ) 
 			&& key_size == arg_key_size && 0 == memcmp(GetKey(), arg_key, key_size);
-	}
+		}
 	bool operator==(const DictEntry& r) const
-	{
+		{
 		return Equal(r.GetKey(), r.key_size, r.hash);
-	}
+		}
 	bool operator!=(const DictEntry& r) const
-	{
-		return !Equal(r.GetKey(), r.key_size, r.hash);
-	}
+		{
+		return ! Equal(r.GetKey(), r.key_size, r.hash);
+		}
 };
 
 struct IterCookie;
@@ -145,7 +138,7 @@ public:
 
 	// Returns previous value, or 0 if none.
 	void* Insert(HashKey* key, void* val)
-		{ return Insert(key->TakeKey(), key->Size(), key->Hash(), val, 0);}
+		{ return Insert(key->TakeKey(), key->Size(), key->Hash(), val, 0); }
 	// If copy_key is true, then the key is copied, otherwise it's assumed
 	// that it's a heap pointer that now belongs to the Dictionary to
 	// manage as needed. 
@@ -171,7 +164,7 @@ public:
 		{ return cum_entries; }
 
 	// True if the dictionary is ordered, false otherwise.
-	int IsOrdered() const		{ return order != 0; }
+	int IsOrdered() const	{ return order != 0; }
 
 	// If the dictionary is ordered then returns the n'th entry's value;
 	// the second method also returns the key.  The first entry inserted
@@ -308,8 +301,8 @@ private:
 	uint64_t cum_entries;
 	dict_delete_func delete_func;
 	DictEntry* table;
-	vector<IterCookie*>* cookies;
-	vector<DictEntry>* order;//order means the order of insertion. means no deletion until exit. will be inefficient. 
+	std::vector<IterCookie*>* cookies;
+	std::vector<DictEntry>* order;//order means the order of insertion. means no deletion until exit. will be inefficient. 
 public:
 	//Debugging
 #ifdef DEBUG
@@ -356,5 +349,3 @@ public:
 	T* RemoveEntry(const HashKey* key)
 		{ return (T*) Remove(key->Key(), key->Size(), key->Hash()); }
 };
-
-#endif//odict_h
