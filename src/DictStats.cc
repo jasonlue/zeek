@@ -33,7 +33,7 @@ public:
         {
         clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &ts2);
         long ns = (ts2.tv_sec - ts1.tv_sec) * 1000000000 + ts2.tv_nsec - ts1.tv_nsec;
-		if( count > 0)
+		if( count > 0 )
         	ns /= count;
 		printf("%20s: %'ld nanoseconds.\n", msg.c_str(), ns);
         }
@@ -47,21 +47,21 @@ private:
 class MeasureSpace{
     public:
         MeasureSpace(std::string msg, long count=1): msg(msg), count(count) 
-        {
+            {
             uint64_t total;
             get_memory_usage(&total, &malloced);
-        }
+            }
         ~MeasureSpace()
-        {
+            {
             uint64_t total, malloced2 = 0;
             get_memory_usage(&total, &malloced2);
             uint64_t m = malloced2 - malloced;
-            if(count > 0)
-            {
+            if( count > 0 )
+                {
                 m /= count;
                 printf("$20s: %'d bytes.\n", (int)m);
+                }
             }
-        }
 
     private:
         std::string msg;
@@ -77,24 +77,24 @@ void DumpMemInfo()
     }
 
 void RandomString( string f, int n)
-{//1-64 len
+    {//1-64 len
     ofstream fs(f);
-    if( !fs.is_open())
+    if( ! fs.is_open() )
         return;
 
     char ch[65];
-    for(int i=0; i<n; i++)
+    for( int i=0; i<n; i++ )
         {
         int r = rand() % 64;
         ch[r] = 0;
-        for( int j=0; j<r; j++)
+        for( int j=0; j<r; j++ )
             {
             int c = rand() % 52;
             ch[j] = c >= 26 ? (c-26 + 'a') : c + 'A';
             }
         fs << ch << endl;
         }    
-}
+    }
 
 vector<Dictionary*> dicts;
 
@@ -141,20 +141,20 @@ void DictStats(string s, int largest_n)
 
 	uint64_t memory = 0;
 	printf("==============================================================%s=======================================================\n", s.c_str());
-	for(auto d: dicts)
+	for( auto d: dicts )
 	    {
 		empty += d->Length() ? 0 : 1;
-		if( d->MaxLength() < 8)
+		if( d->MaxLength() < 8 )
 			num_dicts[d->MaxLength()]++;
 		else
 			num_dicts[8]++;
 
 		ordered += d->IsOrdered() ? 1 : 0;
     	d->DistanceStats(max_distance, distances, DICT_NUM_DISTANCES);
-        for(int i=0; i<DICT_NUM_DISTANCES; i++)
+        for( int i=0; i<DICT_NUM_DISTANCES; i++ )
             distances_global[i] += distances[i];
 
-        if( max_distance_global < max_distance)
+        if( max_distance_global < max_distance )
             max_distance_global = max_distance;
         
 		num_entries += d->Length();
@@ -167,7 +167,7 @@ void DictStats(string s, int largest_n)
 
 	printf("----------------------------------------------------------------------------------------------------------------------\n");
 	printf("    dicts: total %'d ordered %'d empty %'d ", (int)dicts.size(), ordered, empty);
-	for(int i=0; i<8; i++)
+	for( int i=0; i<8; i++ )
 		printf("[%d]%'d ", i, num_dicts[i]);
 	printf("[8+]%'d\n", num_dicts[8]);
 
@@ -176,7 +176,7 @@ void DictStats(string s, int largest_n)
 	printf("  entries: current %'d max %'d buckets %'d entries/dict %.2f buckets/dict %.2f load %.2f \n", 
 		num_entries, max_entries, capacity, (float)num_entries/dicts.size(), (float)capacity/dicts.size(), (float)num_entries/capacity);
 
-    if( num_entries > 0)
+    if( num_entries > 0 )
         {
         printf("distances: ");
         for(int i=0; i<DICT_NUM_DISTANCES-1; i++)
@@ -190,14 +190,13 @@ void DictStats(string s, int largest_n)
         memory>>20, malloced>>20, (float)memory*100/malloced, int(memory/dicts.size()), (int)memory/(num_entries?num_entries:1));
     }
 
-void DumpDictKeys( int top_n )
+void DumpDictKeys(int top_n)
     {
 	auto dicts = Dicts(top_n);
-
     int c = top_n;
-    for( auto d : dicts)
+    for( auto d : dicts )
         {
-        if(c-- <= 0 )
+        if( c-- <= 0 )
             return;
         d->DumpKeys();
         }
@@ -208,7 +207,7 @@ void DumpDictKeys( int top_n )
     {
 	fstream g(key_file, ios::in);
     string l;
-    while(getline(g,l))
+    while( getline(g,l) )
         keys.push_back(l);
     return true;
     }
@@ -217,7 +216,7 @@ void DumpDictKeys( int top_n )
     {
  	fstream g(key_file, ios::in);
     string l;
-    while(getline(g,l))
+    while( getline(g,l) )
         keys.push_back(new HashKey(l.c_str(), l.length()));
     return true;
     }
@@ -242,7 +241,7 @@ bool LoadHashKeys(vector<HashKey*>& keys, string key_file)
 void LoadDict(PDict<char>& d, const vector<string>& keys)
     {
     //random_shuffle(keys.begin(), keys.end());
-    for(auto k: keys)
+    for( auto k: keys )
         d.Insert(k.c_str(), new char[1]); //value not important, as long as they are different.
     }
 
@@ -259,19 +258,19 @@ void TestStringDictInsert(string key_file)
     LoadStringKeys(keys, key_file);
     PDict<char> d;//(/*ORDERED*/);
     random_shuffle(keys.begin(), keys.end());
-    for(int i=0; i<(int)keys.size(); i++)
+    for( int i=0; i<(int)keys.size(); i++ )
         {
         d.Insert(keys[i].c_str(), new char[1]);
         vector<string >iterKeys;
         IterCookie* c = d.InitForIteration();
         void* v;
         HashKey* hk;
-        while((v=d.NextEntry(hk,c)))
+        while( (v=d.NextEntry(hk,c)) )
             iterKeys.push_back(string((char*)hk->Key(), hk->Size()));
         ASSERT((int)iterKeys.size() == i+1);
         sort(iterKeys.begin(), iterKeys.end());
         sort(keys.begin(), keys.begin()+i+1);
-        for(int j=0; j<=i; j++)
+        for( int j=0; j<=i; j++ )
             ASSERT(keys[j] == iterKeys[j]);
         }
     d.Dump();
@@ -283,25 +282,25 @@ void StringDictPerf(string cmd, string key_file, int num_keys, int rounds)
     vector<HashKey*> keys;
     LoadStringHashKeys(keys, key_file);
     int items = (int)keys.size();
-    if( num_keys < 0)
+    if( num_keys < 0 )
         num_keys = items;
-    else if( num_keys > items)
+    else if( num_keys > items )
         num_keys = items;
     cout <<  "\n" << cmd << " StringDictPerf " << key_file << " size: " << num_keys << " rounds: " << rounds << endl;
     PDict<char> d0;
-    for(int j = 0; j < num_keys; j++)
+    for( int j = 0; j < num_keys; j++ )
         d0.Insert(keys[j], value);
     d0.Dump();
 
     uint64_t total = 0, malloced = 0, malloced2 = 0;
     get_memory_usage(&total, &malloced);
-   PDict<char>* d = new PDict<char>[rounds];//(/*UNORDERED*/);
+    PDict<char>* d = new PDict<char>[rounds];//(/*UNORDERED*/);
 
     random_shuffle(keys.begin(), keys.end());
     {
         MeasureTime m("Insert", rounds*num_keys);
-        for(int i = 0; i < rounds; i++)
-            for(int j = 0; j < num_keys; j++)
+        for( int i = 0; i < rounds; i++ )
+            for( int j = 0; j < num_keys; j++ )
                 d[i].Insert(keys[j], value);
     }
     get_memory_usage(&total, &malloced2);
@@ -311,16 +310,16 @@ void StringDictPerf(string cmd, string key_file, int num_keys, int rounds)
     random_shuffle(keys.begin(), keys.end());
     {
         MeasureTime m("Successful Lookup", rounds*num_keys);
-        for(int i = 0; i < rounds; i++)
-            for(int j = 0; j < num_keys; j++)
+        for( int i = 0; i < rounds; i++ )
+            for( int j = 0; j < num_keys; j++ )
                 d[i].Lookup(keys[j]);
     }
 
     vector<HashKey*> lower_keys;
     char key[4096];
-    for(auto hk:keys)
+    for( auto hk:keys )
         {
-        for(int j = 0; j < (int)hk->Size(); j++)
+        for( int j = 0; j < (int)hk->Size(); j++ )
             {
             const char* k = (const char*)hk->Key();
             key[j] = tolower(k[j]);
@@ -330,16 +329,16 @@ void StringDictPerf(string cmd, string key_file, int num_keys, int rounds)
 
     {
         MeasureTime m("Unsuccessful Lookup", rounds*num_keys);
-        for(int i=0; i<rounds; i++)
-            for(int j = 0; j < num_keys; j++)
+        for( int i=0; i<rounds; i++ )
+            for( int j = 0; j < num_keys; j++ )
                 d[i].Lookup(lower_keys[j]);
     }
 
     random_shuffle(keys.begin(), keys.end());
     {
         MeasureTime m("Remove", rounds*num_keys);
-        for(int i=0; i<rounds; i++)
-            for(int j = 0; j < num_keys; j++)
+        for( int i=0; i<rounds; i++ )
+            for( int j = 0; j < num_keys; j++ )
                 d[i].RemoveEntry(keys[j]);
     }
     delete []d;
@@ -356,25 +355,25 @@ void StringDictPerf_StringHash(string cmd, string key_file, int num_keys, int ro
     StringMap stringMap;
     StringMap::hasher fn = stringMap.hash_function();
     int items = (int)keys.size();
-    if( num_keys < 0)
+    if( num_keys < 0 )
         num_keys = items;
-    else if( num_keys > items)
+    else if( num_keys > items )
         num_keys = items;
     cout <<  "\n" << cmd << " StringDictPerf_StringHash " << key_file << " size: " << num_keys << " rounds: " << rounds << endl;
     PDict<char> d0;
-    for(int j = 0; j < num_keys; j++)
+    for( int j = 0; j < num_keys; j++ )
         d0.Insert(keys[j], value);
     d0.Dump();
 
     uint64_t total = 0, malloced = 0, malloced2 = 0;
     get_memory_usage(&total, &malloced);
-   PDict<char>* d = new PDict<char>[rounds];//(/*UNORDERED*/);
+    PDict<char>* d = new PDict<char>[rounds];//(/*UNORDERED*/);
 
     random_shuffle(keys.begin(), keys.end());
     {
         MeasureTime m("Insert", rounds*num_keys);
-        for(int i = 0; i < rounds; i++)
-            for(int j = 0; j < num_keys; j++)
+        for( int i = 0; i < rounds; i++ )
+            for( int j = 0; j < num_keys; j++ )
                 {
                 fn(strkeys[j]);
                 d[i].Insert(keys[j], value);
@@ -386,8 +385,8 @@ void StringDictPerf_StringHash(string cmd, string key_file, int num_keys, int ro
     random_shuffle(keys.begin(), keys.end());
     {
         MeasureTime m("Successful Lookup", rounds*num_keys);
-        for(int i = 0; i < rounds; i++)
-            for(int j = 0; j < num_keys; j++)
+        for( int i = 0; i < rounds; i++ )
+            for( int j = 0; j < num_keys; j++ )
                 {
                 fn(strkeys[j]);
                 d[i].Lookup(keys[j]);
@@ -396,9 +395,9 @@ void StringDictPerf_StringHash(string cmd, string key_file, int num_keys, int ro
 
     vector<HashKey*> lower_keys;
     char key[4096];
-    for(auto hk:keys)
+    for( auto hk:keys )
         {
-        for(int j = 0; j < (int)hk->Size(); j++)
+        for( int j = 0; j < (int)hk->Size(); j++ )
             {
             const char* k = (const char*)hk->Key();
             key[j] = tolower(k[j]);
@@ -408,8 +407,8 @@ void StringDictPerf_StringHash(string cmd, string key_file, int num_keys, int ro
 
     {
         MeasureTime m("Unsuccessful Lookup", rounds*num_keys);
-        for(int i=0; i<rounds; i++)
-            for(int j = 0; j < num_keys; j++)
+        for( int i=0; i<rounds; i++ )
+            for( int j = 0; j < num_keys; j++ )
                 {
                 fn(strkeys[j]);
                 d[i].Lookup(lower_keys[j]);
@@ -419,8 +418,8 @@ void StringDictPerf_StringHash(string cmd, string key_file, int num_keys, int ro
     random_shuffle(keys.begin(), keys.end());
     {
         MeasureTime m("Remove", rounds*num_keys);
-        for(int i=0; i<rounds; i++)
-            for(int j = 0; j < num_keys; j++)
+        for( int i=0; i<rounds; i++ )
+            for( int j = 0; j < num_keys; j++ )
                 {
                 fn(strkeys[j]);
                 d[i].RemoveEntry(keys[j]);
@@ -443,9 +442,9 @@ void StringMapPerf_ZeekHash(string cmd, string key_file, int num_keys, int round
     vector<string> keys;
     LoadStringKeys(keys, key_file);
     int items = (int)keys.size();
-    if( num_keys < 0)
+    if( num_keys < 0 )
         num_keys = items;
-    else if( num_keys > items)
+    else if( num_keys > items )
         num_keys = items;
     cout <<  "\n" << cmd << " StringMapPerf_ZeekHash " << key_file << " size: " << num_keys << " rounds: " << rounds << endl;
 
@@ -455,8 +454,8 @@ void StringMapPerf_ZeekHash(string cmd, string key_file, int num_keys, int round
     random_shuffle(keys.begin(), keys.end());
     {
         MeasureTime m("Insert", rounds*num_keys);
-        for(int i = 0; i < rounds; i++)
-            for(int j = 0; j < num_keys; j++)
+        for( int i = 0; i < rounds; i++ )
+            for( int j = 0; j < num_keys; j++ )
                 d[i].emplace(keys[j], new char[1]);
     }
     get_memory_usage(&total, &malloced2);
@@ -465,28 +464,28 @@ void StringMapPerf_ZeekHash(string cmd, string key_file, int num_keys, int round
     random_shuffle(keys.begin(), keys.end());
     {
         MeasureTime m("Successful Lookup", rounds*num_keys);
-        for(int i = 0; i < rounds; i++)
-            for(int j = 0; j < num_keys; j++)
+        for( int i = 0; i < rounds; i++ )
+            for( int j = 0; j < num_keys; j++ )
                 d[i].find(keys[j]);
     }
 
-    for(int i=0; i<(int)keys.size(); i++)
-        for(int j = 0; j< (int)keys[i].size(); j++)
+    for( int i=0; i<(int)keys.size(); i++ )
+        for( int j = 0; j< (int)keys[i].size(); j++ )
             keys[i][j] = tolower(keys[i][j]);
 
     {
         MeasureTime m("Unsuccessful Lookup", rounds*num_keys);
-        for(int i=0; i<rounds; i++)
-            for(int j = 0; j < num_keys; j++)
+        for( int i=0; i<rounds; i++ )
+            for( int j = 0; j < num_keys; j++ )
                 d[i].find(keys[j]);
     }
 
     random_shuffle(keys.begin(), keys.end());
     {
         MeasureTime m("Remove", rounds*num_keys);
-        for(int i=0; i<rounds; i++)
+        for( int i=0; i<rounds; i++ )
             {
-            for(int j = 0; j < num_keys; j++)
+            for( int j = 0; j < num_keys; j++ )
                 d[i].erase(keys[j]); 
             }
     }
@@ -511,8 +510,8 @@ void StringMapPerf_StringHash(string cmd, string key_file, int num_keys, int rou
     random_shuffle(keys.begin(), keys.end());
     {
         MeasureTime m("Insert", rounds*num_keys);
-        for(int i = 0; i < rounds; i++)
-            for(int j = 0; j < num_keys; j++)
+        for( int i = 0; i < rounds; i++ )
+            for( int j = 0; j < num_keys; j++ )
                 d[i].emplace(keys[j], new char[1]);
     }
     get_memory_usage(&total, &malloced2);
@@ -521,30 +520,28 @@ void StringMapPerf_StringHash(string cmd, string key_file, int num_keys, int rou
     random_shuffle(keys.begin(), keys.end());
     {
         MeasureTime m("Successful Lookup", rounds*num_keys);
-        for(int i = 0; i < rounds; i++)
-            for(int j = 0; j < num_keys; j++)
+        for( int i = 0; i < rounds; i++ )
+            for( int j = 0; j < num_keys; j++ )
                 d[i].find(keys[j]);
     }
 
-    for(int i=0; i<(int)keys.size(); i++)
-        for(int j = 0; j< (int)keys[i].size(); j++)
+    for( int i=0; i<(int)keys.size(); i++ )
+        for( int j = 0; j< (int)keys[i].size(); j++ )
             keys[i][j] = tolower(keys[i][j]);
 
     {
         MeasureTime m("Unsuccessful Lookup", rounds*num_keys);
-        for(int i=0; i<rounds; i++)
-            for(int j = 0; j < num_keys; j++)
+        for( int i=0; i<rounds; i++ )
+            for( int j = 0; j < num_keys; j++ )
                 d[i].find(keys[j]);
     }
 
     random_shuffle(keys.begin(), keys.end());
     {
         MeasureTime m("Remove", rounds*num_keys);
-        for(int i=0; i<rounds; i++)
-            {
-            for(int j = 0; j < num_keys; j++)
+        for( int i=0; i<rounds; i++ )
+            for( int j = 0; j < num_keys; j++ )
                 d[i].erase(keys[j]);
-            }
     }
     delete []d;
     }
@@ -555,13 +552,13 @@ void BinaryDictPerf(string cmd, string key_file, int num_keys, int rounds)
     vector<HashKey*> connections;
     LoadHashKeys(connections, key_file);
     int items = connections.size();
-    if( num_keys < 0)
+    if( num_keys < 0 )
         num_keys = items;
-    else if( num_keys > items)
+    else if( num_keys > items )
         num_keys = items;
     cout <<  "\n" << cmd << " " << key_file << " size: " << num_keys << " rounds: " << rounds << endl;
     PDict<char> d0;
-    for(int j = 0; j < num_keys; j++)
+    for( int j = 0; j < num_keys; j++ )
         d0.Insert(connections[j], value);
     d0.Dump();
     PDict<char>* d = new PDict<char>[rounds];
@@ -571,8 +568,8 @@ void BinaryDictPerf(string cmd, string key_file, int num_keys, int rounds)
         random_shuffle(connections.begin(), connections.end());
         {
             MeasureTime m("Insert", rounds*num_keys);
-            for(int i = 0; i < rounds; i++)
-                for(int j = 0; j < num_keys; j++)
+            for( int i = 0; i < rounds; i++ )
+                for( int j = 0; j < num_keys; j++ )
                     d[i].Insert(connections[j], value);
         }
     }
@@ -580,16 +577,16 @@ void BinaryDictPerf(string cmd, string key_file, int num_keys, int rounds)
     random_shuffle(connections.begin(), connections.end());
     {
         MeasureTime m("Successful Lookup", rounds*num_keys);
-        for(int i = 0; i < rounds; i++)
+        for( int i = 0; i < rounds; i++ )
             for( int j = 0; j < num_keys; j++ )
                 d[i].Lookup(connections[j]);
     }
 
     vector<HashKey*> xor_connections;
     char key[4096];
-    for(auto c: connections)
+    for( auto c: connections )
         {
-        for(int j = 0; j < (int)c->Size(); j++)
+        for( int j = 0; j < (int)c->Size(); j++ )
             {
             const char* k = (const char*)c->Key();
             key[j] = k[j] ^ 0xFF;
@@ -599,16 +596,16 @@ void BinaryDictPerf(string cmd, string key_file, int num_keys, int rounds)
 
     {
         MeasureTime m("Unsuccessful Lookup", rounds*num_keys);
-        for(int i = 0; i < rounds; i++)
-            for(int j = 0; j < num_keys; j++ )
+        for( int i = 0; i < rounds; i++ )
+            for( int j = 0; j < num_keys; j++ )
                 d[i].Lookup(xor_connections[j]);
     }
 
     random_shuffle(connections.begin(), connections.end());
     {
         MeasureTime m("Remove", rounds*num_keys);
-        for(int i = 0; i < rounds; i++)
-            for( int j = 0; j < num_keys; j++)
+        for( int i = 0; i < rounds; i++ )
+            for( int j = 0; j < num_keys; j++ )
                 d[i].RemoveEntry(connections[j]);
     }
     delete []d;
@@ -631,7 +628,7 @@ void TestLookupDuringIterationWhileRemapping(string key_file)
     //d.MakeRobustCookie(c);
     char* v;
     HashKey*  hk;
-    while( (v = d.NextEntry(hk, c) ))
+    while( (v = d.NextEntry(hk, c)) )
         {
         iterKeys.push_back(string((char*)hk->Key(), hk->Size()));
         char* v2 = d.Lookup(hk);
@@ -641,7 +638,7 @@ void TestLookupDuringIterationWhileRemapping(string key_file)
     sort(keys.begin(), keys.end());
     sort(iterKeys.begin(), iterKeys.end());
     ASSERT(keys.size() == iterKeys.size());
-    for(int i=0; i<(int)keys.size(); i++)
+    for( int i=0; i<(int)keys.size(); i++ )
         ASSERT(keys[i] == iterKeys[i]);
     }
 
@@ -661,7 +658,7 @@ void TestRemoveDuringIteration(string key_file)
     d.MakeRobustCookie(c);
     char* v;
     HashKey*  hk;
-    while( (v = d.NextEntry(hk, c) ))
+    while( (v = d.NextEntry(hk, c)) )
         {
         iterKeys.push_back(string((char*)hk->Key(), hk->Size()));
         d.Remove(hk);
@@ -670,7 +667,7 @@ void TestRemoveDuringIteration(string key_file)
     sort(keys.begin(), keys.end());
     sort(iterKeys.begin(), iterKeys.end());
     ASSERT(keys.size() == iterKeys.size());
-    for(int i=0; i<(int)keys.size(); i++)
+    for( int i=0; i<(int)keys.size(); i++ )
         ASSERT(keys[i] == iterKeys[i]);
     }
 
@@ -690,7 +687,7 @@ void TestInsertRemapDuringIteration(string key_file)
     d.MakeRobustCookie(c);
     char* v;
     HashKey*  hk;
-    for(int i=0; i<(int)keys.size(); i++)
+    for( int i=0; i<(int)keys.size(); i++ )
         {
         d.Insert(keys[i].c_str(), value);
         v = d.NextEntry(hk, c);
@@ -700,7 +697,7 @@ void TestInsertRemapDuringIteration(string key_file)
     //now iterKeys should be the same as keys.
     sort(iterKeys.begin(), iterKeys.end());
     ASSERT(keys.size() == iterKeys.size());
-    for(int i=0; i<(int)keys.size(); i++)
+    for( int i=0; i<(int)keys.size(); i++ )
         ASSERT(keys[i] == iterKeys[i]);
     }
 
@@ -714,7 +711,7 @@ void TestInsertDuringIteration(string key_file)
     *value = 'v';
     PDict<char> d;
     int i=keys.size()-1;
-    for(; i>=m; i--)
+    for( ; i>=m; i-- )
         d.Insert(keys[i].c_str(), value);
 
     //insert half of the keys into dictionary, then while iteerating, insert one at one iteration.
@@ -725,23 +722,23 @@ void TestInsertDuringIteration(string key_file)
     d.MakeRobustCookie(c);
     char* v;
     HashKey*  hk;
-    while( (v = d.NextEntry(hk, c) ))
+    while( (v = d.NextEntry(hk, c)) )
         {
         iterKeys.push_back(string((char*)hk->Key(), hk->Size()));
-        if(i>=0)
+        if( i>=0 )
             d.Insert(keys[i--].c_str(), value);
         }
     //now iterKeys should be the same as keys.
     sort(keys.begin(), keys.end());
     sort(iterKeys.begin(), iterKeys.end());
     ASSERT(keys.size() == iterKeys.size());
-    for(int i=0; i<(int)keys.size(); i++)
+    for( int i=0; i<(int)keys.size(); i++ )
         ASSERT(keys[i] == iterKeys[i]);
     }
 
 bool HasSuffix(string full, string suffix)
     {
-    if( full.length() < suffix.length())
+    if( full.length() < suffix.length() )
         return false;
     return 0 == full.compare(full.length() - suffix.length(), suffix.length(), suffix);
     }
@@ -753,30 +750,28 @@ void TestDictMain(string cmd, string param)
     int size = 100;
     int rounds = 10;
     getline(p, key_file, '@');
-    if( getline(p, s, ':'))
-    {
+    if( getline(p, s, ':') )
         if( getline(p, r, ':') )
             getline(p, f, ':');
-    }
 
-    if( !r.empty())
+    if( ! r.empty() )
         rounds = stoi(r);
-    if( !s.empty() )
+    if( ! s.empty() )
         size = stoi(s);
 
     if( HasSuffix(key_file, ".ckey") )
-    {
+        {
         if( f == "StringDictPerf" )
             StringDictPerf(cmd, key_file, size, rounds);
         else if( f == "StringDictPerf_StringHash" )
             StringDictPerf_StringHash(cmd, key_file, size, rounds);
         else if( f == "StringMapPerf_ZeekHash" )
             StringMapPerf_ZeekHash(cmd, key_file, size, rounds);
-        else if( f == "StringMapPerf_StringHash")
+        else if( f == "StringMapPerf_StringHash" )
             StringMapPerf_StringHash(cmd, key_file, size, rounds);
-        else if( f == "RandomString")
+        else if( f == "RandomString" )
             RandomString(key_file, size);
-    }
+        }
     else
         BinaryDictPerf(cmd, key_file, size, rounds);
     //TestLookupDuringIterationWhileRemapping(key_file);
